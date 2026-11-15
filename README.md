@@ -55,6 +55,18 @@ npm run build        # the site in dist/site
 npm run serve        # dist/site on http://localhost:8080
 ```
 
+## Tests
+
+- `npm test`: unit tests of the core, storage, sync settings and icons (`tests/unit`).
+- `npm run test:sync`: devices made of the app's store and sync manager, syncing through Lokki's Python server
+  (`tests/sync`): joining the vault, field-by-field merges, deletes and the passphrase.
+- `npm run test:e2e`: builds the site and drives it in Chromium (`tests/e2e`): items, lists, gestures, the menus,
+  scanning a QR code with a fake camera, and setting up sync against the server.
+
+The sync and end-to-end tests need [uv](https://docs.astral.sh/uv/) and Lokki's server, which
+`scripts/fetch-lokki-server.sh` fetches into `.lokki/` at the Lokki commit the copied sync package came from. The
+end-to-end tests also need Playwright's Chromium (`npx playwright install chromium`). CI runs all three.
+
 Syncing needs a [Lokki sync server](https://github.com/joakimnordling/lokki/tree/main/servers/python) that lists the
 app's origin in `LOKKI_CORS_ORIGINS`, for example `["https://listikka.jocke.fi"]`.
 

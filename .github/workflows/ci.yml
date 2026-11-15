@@ -25,7 +25,15 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
       - run: npm ci
+      - run: npx playwright install --with-deps chromium
       - run: npm run lint
-      - run: npm test
-      - run: npm run build
+      - name: Unit tests
+        run: npm test
+      - name: Lokki's sync server, at the commit of the copied sync package
+        run: scripts/fetch-lokki-server.sh
+      - name: Sync against the server
+        run: npm run test:sync
+      - name: End-to-end tests (built site)
+        run: npm run test:e2e
