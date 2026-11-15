@@ -11,6 +11,7 @@ import { createIdb } from "./data/idb.js";
 import { createStore } from "./data/store.js";
 import { createSync, OTHER_APP } from "./sync/manager.js";
 import { svg } from "./ui/icons.js";
+import { canScan, scanPairing } from "./ui/scan.js";
 
 const esc = (s) =>
   String(s ?? "").replace(
@@ -428,6 +429,7 @@ function renderSheet() {
   } else if (sheet.type === "connect") {
     body = `<h2 id="sheet-title">Add server</h2>
       <p>Sync keeps your lists on several devices through a server you choose. Everything is encrypted on this device with a passphrase only you know; the server can't read it.</p>
+      ${canScan() ? `<button type="button" class="scan-btn" data-act="scan"${sheet.busy ? " disabled" : ""}>${svg("scan")}Scan QR Code</button><div class="or">or type them</div>` : ""}
       <form id="connect-form" autocomplete="off" style="display: contents">
       <label class="field">URL<input id="f-url" type="url" inputmode="url" placeholder="https://sync.example.com" value="${esc(sheet.url || "")}" autocapitalize="off" spellcheck="false"></label>
       <label class="field">Token<input id="f-token" placeholder="lk_…" value="${esc(sheet.token || "")}" autocapitalize="off" spellcheck="false"></label>
@@ -827,6 +829,11 @@ document.addEventListener(
 
       case "add-server":
         openSheet({ type: "connect" });
+        break;
+      case "scan":
+        scanPairing(toast).then((found) => {
+          if (found && sheet?.type === "connect") connect(found.url, found.token);
+        });
         break;
       case "server":
         openSheet({ type: "server", bit: Number(b.dataset.bit) });
