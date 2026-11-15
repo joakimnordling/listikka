@@ -260,6 +260,7 @@ function renderSettings() {
       ${servers}
       <button class="nav-row" data-act="add-server">${svg("plus")}Add server</button>
       ${st.servers.length ? `<button class="nav-row" data-act="sync-now" style="border-top: 0">${svg("refresh")}Sync now</button>` : ""}
+      ${st.setUp ? `<button class="nav-row" data-act="change-pass" style="border-top: 0">${svg("pencil")}Change passphrase</button>` : ""}
       <h2>Lists</h2>
       <button class="nav-row" data-act="removed-lists">${svg("broom")}Removed lists<span class="count">${n}</span>${svg("chevRight", 18)}</button>
       <h2>About</h2>
@@ -369,7 +370,7 @@ function renderSheet() {
     return;
   }
   let body = "";
-  const err = sheet.error ? `<p class="err" role="alert">${esc(sheet.error)}</p>` : "";
+  const err = `<p class="err" role="alert"${sheet.error ? "" : " hidden"}>${esc(sheet.error || "")}</p>`;
   if (sheet.type === "item") {
     const i = getItem(sheet.id);
     if (!i || !isLive(i)) {
@@ -433,7 +434,7 @@ function renderSheet() {
       <form id="connect-form" autocomplete="off" style="display: contents">
       <label class="field">URL<input id="f-url" type="url" inputmode="url" placeholder="https://sync.example.com" value="${esc(sheet.url || "")}" autocapitalize="off" spellcheck="false"></label>
       <label class="field">Token<input id="f-token" placeholder="lk_…" value="${esc(sheet.token || "")}" autocapitalize="off" spellcheck="false"></label>
-      ${err}<button class="primary" type="submit"${sheet.busy ? " disabled" : ""}>${sheet.busy ? "Connecting…" : "Connect"}</button></form>`;
+      ${err}<button class="primary" type="submit" data-busy="Connecting…">Connect</button></form>`;
   } else if (sheet.type === "passphrase") {
     const fresh = !sheet.keyring;
     body = fresh
@@ -443,12 +444,22 @@ function renderSheet() {
       <label class="field">Passphrase<input id="p1" type="password" autocomplete="new-password"></label>
       <div class="meter" id="meter" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
       <label class="field">Again<input id="p2" type="password" autocomplete="new-password"></label>
-      ${err}<button class="primary" type="submit"${sheet.busy ? " disabled" : ""}>${sheet.busy ? "Setting up…" : "Start syncing"}</button></form>`
+      ${err}<button class="primary" type="submit" data-busy="Setting up…">Start syncing</button></form>`
       : `<h2 id="sheet-title">Passphrase</h2>
       <p>This server already holds your lists. Enter the passphrase you chose when you set up sync. Lists already on this device are added to them.</p>
       <form id="pass-form" autocomplete="off" style="display: contents">
       <label class="field">Passphrase<input id="p1" type="password" autocomplete="current-password"></label>
-      ${err}<button class="primary" type="submit"${sheet.busy ? " disabled" : ""}>${sheet.busy ? "Opening…" : "Join"}</button></form>`;
+      ${err}<button class="primary" type="submit" data-busy="Opening…">Join</button></form>`;
+  } else if (sheet.type === "change-pass") {
+    body = `<h2 id="sheet-title">Change passphrase</h2>
+      <p>The new passphrase opens your lists on servers from now on. Devices already set up keep working without it.</p>
+      <form id="change-form" autocomplete="off" style="display: contents">
+      <label class="field">Current<input id="p0" type="password" autocomplete="current-password"></label>
+      <label class="field">New<input id="p1" type="password" autocomplete="new-password"></label>
+      <div class="meter" id="meter" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+      <label class="field">Again<input id="p2" type="password" autocomplete="new-password"></label>
+      ${err}<button class="primary" type="submit" data-busy="Changing…">Change</button></form>
+      <button class="quiet" data-act="close-sheet">Cancel</button>`;
   } else if (sheet.type === "server") {
     const s = sync.status().servers.find((x) => x.bit === sheet.bit);
     if (!s) {
@@ -464,7 +475,8 @@ function renderSheet() {
   const focused = document.activeElement?.id;
   host.innerHTML = `<div class="scrim" data-act="scrim"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="grab"></div>${body}</div>`;
   const keep = focused && $(`#${focused}`, host);
-  const first = keep || $("#f-lname") || $("#f-url") || $("#p1") || (sheet.type === "item" ? null : $(".sheet button"));
+  const first =
+    keep || $("#f-lname") || $("#f-url") || $("#p0") || $("#p1") || (sheet.type === "item" ? null : $(".sheet button"));
   if (first) first.focus();
   placeToast();
 }
@@ -520,9 +532,29 @@ function describeError(e) {
   return e?.message || "Something went wrong.";
 }
 
+/** A sheet's form while it works and after: its button and its error change in place, so what was typed stays. */
+function setBusy(busy, error = null) {
+  sheet = { ...sheet, busy, error };
+  const btn = $(".sheet button[type=submit]");
+  if (btn) {
+    btn.dataset.idle ??= btn.textContent;
+    btn.disabled = busy;
+    btn.textContent = busy ? btn.dataset.busy : btn.dataset.idle;
+  }
+  for (const b of $$(".sheet .scan-btn")) b.disabled = busy;
+  const err = $(".sheet .err");
+  if (err) {
+    err.textContent = error || "";
+    err.hidden = !error;
+  }
+}
+
 async function connect(url, token) {
-  sheet = { ...sheet, url, token, busy: true, error: null };
-  renderSheet();
+  sheet = { ...sheet, url, token };
+  const f = { url: $("#f-url"), token: $("#f-token") };
+  if (f.url) f.url.value = url;
+  if (f.token) f.token.value = token;
+  setBusy(true);
   try {
     if (!/^https?:\/\/\S+$/.test(url)) throw new Error("Enter the server's address, starting with https://.");
     if (!token) throw new Error("Enter the token you got for this server.");
@@ -535,8 +567,7 @@ async function connect(url, token) {
     }
     openSheet({ type: "passphrase", url, token, keyring });
   } catch (e) {
-    sheet = { ...sheet, busy: false, error: describeError(e) };
-    renderSheet();
+    setBusy(false, describeError(e));
   }
 }
 
@@ -544,8 +575,7 @@ async function setPassphrase() {
   const p1 = $("#p1").value;
   const p2 = $("#p2")?.value;
   const { url, token, keyring } = sheet;
-  sheet = { ...sheet, busy: true, error: null };
-  renderSheet();
+  setBusy(true);
   try {
     if (!keyring) {
       if (p1.length < 10) throw new Error("Use at least 10 characters; a few words work well.");
@@ -565,8 +595,23 @@ async function setPassphrase() {
         : e instanceof DamagedKeyringError
           ? "The server's keys look damaged. Ask whoever runs the server."
           : describeError(e);
-    sheet = { ...sheet, busy: false, error: msg };
-    renderSheet();
+    setBusy(false, msg);
+  }
+}
+
+async function changePassphrase() {
+  const current = $("#p0").value;
+  const next = $("#p1").value;
+  setBusy(true);
+  try {
+    if (next.length < 10) throw new Error("Use at least 10 characters; a few words work well.");
+    if (next !== $("#p2").value) throw new Error("The two new passphrases differ.");
+    await sync.changePassphrase(current, next);
+    closeSheet();
+    render();
+    toast("Passphrase changed");
+  } catch (e) {
+    setBusy(false, e instanceof WrongPassphraseError ? "That's not the current passphrase." : describeError(e));
   }
 }
 
@@ -841,6 +886,9 @@ document.addEventListener(
       case "sync-now":
         sync.now();
         break;
+      case "change-pass":
+        openSheet({ type: "change-pass" });
+        break;
       case "server-remove": {
         const s = sync.servers.find((x) => x.bit === sheet.bit);
         openSheet({
@@ -882,6 +930,7 @@ document.addEventListener("submit", (e) => {
     }
   } else if (e.target.id === "connect-form") connect($("#f-url").value.trim(), $("#f-token").value.trim());
   else if (e.target.id === "pass-form") setPassphrase();
+  else if (e.target.id === "change-form") changePassphrase();
   else if (e.target.matches("form.add")) addFresh();
 });
 
