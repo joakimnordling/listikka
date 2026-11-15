@@ -4,13 +4,17 @@
    device's own, kept in localStorage. */
 import { DamagedKeyringError, WrongPassphraseError } from "../vendor/lokki-sync/crypto.js";
 import { OtherAppError } from "../vendor/lokki-sync/engine.js";
+import { backupText, parseBackup, planRestore } from "./core/backup.js";
 import { createClock } from "./core/clock.js";
 import * as L from "./core/lists.js";
 import { EDITABLE, edit, isLive, state } from "./core/records.js";
 import { BUILD, sourceUrl } from "./core/version.js";
+import { zipOne } from "./core/zip.js";
+import { clearCopy, clearEverything } from "./data/clear.js";
 import { createIdb } from "./data/idb.js";
 import { createStore } from "./data/store.js";
 import { createSync, OTHER_APP } from "./sync/manager.js";
+import { fileStamp, readText, saveFile } from "./ui/files.js";
 import { svg } from "./ui/icons.js";
 import { keepInView, watchKeyboard } from "./ui/keyboard.js";
 import { canScan, scanPairing } from "./ui/scan.js";
@@ -268,6 +272,12 @@ function renderSettings() {
       ${st.setUp ? `<button class="nav-row" data-act="change-pass" style="border-top: 0">${svg("pencil")}Change passphrase</button>` : ""}
       <h2>Lists</h2>
       <button class="nav-row" data-act="removed-lists">${svg("broom")}Removed lists<span class="count">${n}</span>${svg("chevRight", 18)}</button>
+      <h2>Data</h2>
+      <button class="nav-row" data-act="backup">${svg("download")}Back up</button>
+      <button class="nav-row" data-act="restore-backup" style="border-top: 0">${svg("upload")}Restore from backup</button>
+      <button class="nav-row" data-act="clear" style="border-top: 0">${svg("trash")}Clear data</button>
+      <input type="file" id="restore-file" accept=".zip,.jsonl,.txt,application/zip" hidden>
+      <p class="text dim" style="padding-top: 8px">Back up saves your lists to a file. Restoring merges a backup into the app: it shows what will change first, and nothing changed since the backup is overwritten.</p>
       <h2>About</h2>
       <p class="text">Listikka, lists for shopping and more.</p>
       <p class="text dim" id="version">Version ${esc(BUILD.version)}${BUILD.commit ? ` · ${esc(BUILD.commit.slice(0, 7))}` : ""}${BUILD.built ? ` · built ${esc(BUILD.built)}` : ""} · <a href="${esc(sourceUrl())}" target="_blank" rel="noopener" style="color: inherit">Source on GitHub</a></p>
@@ -326,6 +336,45 @@ async function addFresh(key = adding) {
   if (inp) inp.value = "";
   await save([r]);
   $(`li[data-id="${r.id}"]`)?.scrollIntoView({ block: "nearest" });
+}
+
+/* ---------- Backups ---------- */
+const count = (n, one) => (n ? `${n} ${n === 1 ? one : `${one}s`}` : "");
+
+// A .zip holding the .jsonl backup (src/core/backup.js); without compression in the browser, the .jsonl as .txt.
+async function backUp() {
+  const day = fileStamp();
+  const text = backupText([...store.lists(), ...store.items()]);
+  try {
+    const ok =
+      typeof CompressionStream === "function"
+        ? await saveFile(
+            `listikka-backup-${day}.zip`,
+            await zipOne(`listikka-backup-${day}.jsonl`, new TextEncoder().encode(text)),
+          )
+        : await saveFile(`listikka-backup-${day}.txt`, text);
+    if (ok) toast("Backup saved");
+  } catch (e) {
+    toast(`The backup didn't finish: ${e?.message || "unknown error"}`);
+  }
+}
+
+async function restoreFrom(file) {
+  if (!file) return;
+  const cant = (body) => openSheet({ type: "notice", title: "Can't restore", body });
+  let text;
+  try {
+    text = await readText(file);
+  } catch (e) {
+    return cant(
+      e?.message === "no-unzip"
+        ? "This browser can't open .zip files. Unpack the backup and choose the .jsonl file inside."
+        : "This file couldn't be read. It may be damaged or incomplete. Nothing was restored.",
+    );
+  }
+  const b = parseBackup(text);
+  if (b.error) return cant(b.error);
+  openSheet({ type: "restore", header: b.header, plan: planRestore(b.records, (k, id) => store.get(k, id)) });
 }
 
 /* ---------- Sheets ---------- */
@@ -428,6 +477,41 @@ function renderSheet() {
   } else if (sheet.type === "confirm") {
     body = `<h2 id="sheet-title">${esc(sheet.title)}</h2><p>${esc(sheet.body)}</p>${err}
         <button class="danger" data-act="confirm-yes">${svg(sheet.icon || "trash", 18)}${esc(sheet.yes || "Delete permanently")}</button>
+        <button class="primary" data-act="close-sheet">Cancel</button>`;
+  } else if (sheet.type === "notice") {
+    body = `<h2 id="sheet-title">${esc(sheet.title)}</h2><p>${esc(sheet.body)}</p>
+        <button class="primary" data-act="close-sheet">Close</button>`;
+  } else if (sheet.type === "restore") {
+    const p = sheet.plan;
+    const at = new Date(sheet.header.exported);
+    const when = Number.isNaN(+at)
+      ? ""
+      : `Made ${at.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}. `;
+    const adds = [count(p.added.list, "list"), count(p.added.item, "item")].filter(Boolean).join(" and ");
+    const changes = [count(p.changed.list, "list"), count(p.changed.item, "item")].filter(Boolean).join(" and ");
+    const what = [adds && `adds ${adds}`, changes && `updates ${changes}`].filter(Boolean).join(", and ");
+    body = `<h2 id="sheet-title">Restore from backup</h2>
+        <p>${when}The backup has ${count(p.has.list, "list") || "no lists"} and ${count(p.has.item, "item") || "no items"}.</p>
+        <p id="restore-plan">${what ? `Restoring ${what}. Nothing changed here since the backup is overwritten.` : "Nothing to restore: Listikka already has everything in this backup."}</p>
+        ${what ? `<button class="primary" data-act="restore-confirm">Restore</button><button class="quiet" data-act="close-sheet">Cancel</button>` : `<button class="primary" data-act="close-sheet">Close</button>`}`;
+  } else if (sheet.type === "clear") {
+    const st = sync.status();
+    const synced = st.setUp && st.servers.length;
+    const lost = synced ? st.unsynced : 0;
+    body = synced
+      ? `<h2 id="sheet-title">Clear data</h2>
+        <p>This removes data from this device only. Your servers keep your lists.</p>
+        ${lost ? `<p class="err">${lost === 1 ? "1 change hasn't" : `${lost} changes haven't`} reached any server yet and would be lost. Sync first, or back up.</p>` : ""}
+        <div class="menu"><button data-act="clear-copy">${svg("refresh")}Clear and download again</button></div>
+        <p>Removes this device's copy of your lists and downloads it again. Your sync setup and settings stay.</p>
+        <button class="danger" data-act="clear-all">${svg("trash", 18)}Clear everything</button>
+        <p>Also removes the sync setup and this device's settings. To sync again, you'll need each server's URL and token, and your passphrase.</p>
+        <button class="primary" data-act="close-sheet">Cancel</button>`
+      : `<h2 id="sheet-title">Clear data</h2>
+        <p>Your lists are saved only on this device. Clearing removes them for good, unless you have a backup.</p>
+        <div class="menu"><button data-act="clear-backup">${svg("download")}Back up first</button></div>
+        <button class="danger" data-act="clear-all">${svg("trash", 18)}Clear everything</button>
+        <p>Removes your lists and this device's settings.</p>
         <button class="primary" data-act="close-sheet">Cancel</button>`;
   } else if (sheet.type === "connect") {
     body = `<h2 id="sheet-title">Add server</h2>
@@ -857,6 +941,8 @@ document.addEventListener(
         if (s.what === "item") save([L.deleteItem(getItem(s.id), clock)]).then(() => toast("Deleted permanently"));
         else if (s.what === "list")
           save(L.deleteList(getList(s.id), store.items(), clock)).then(() => toast("Deleted permanently"));
+        else if (s.what === "clear-all") clearEverything(store.db);
+        else if (s.what === "clear-copy") clearCopy(store.db, sync.servers);
         else if (s.what === "server")
           sync.removeServer(s.bit).then(() => {
             render();
@@ -890,6 +976,50 @@ document.addEventListener(
       case "check-update":
         checkForUpdate({ asked: true, say: toast });
         break;
+      case "backup":
+        backUp();
+        break;
+      case "restore-backup":
+        $("#restore-file").click();
+        break;
+      case "restore-confirm": {
+        const records = sheet.plan.records;
+        closeSheet();
+        save(records).then(() => toast("Backup restored"));
+        break;
+      }
+      case "clear":
+        openSheet({ type: "clear" });
+        break;
+      case "clear-backup":
+        closeSheet();
+        backUp();
+        break;
+      case "clear-copy": {
+        const n = sync.servers.length;
+        openSheet({
+          type: "confirm",
+          what: "clear-copy",
+          title: "Clear and download again",
+          body: `Remove this device's copy of your lists, and download it again from ${n > 1 ? "your servers" : "your server"}? This can't be undone.`,
+          yes: "Clear and download again",
+          icon: "refresh",
+        });
+        break;
+      }
+      case "clear-all": {
+        const synced = sync.status().setUp && sync.servers.length;
+        openSheet({
+          type: "confirm",
+          what: "clear-all",
+          title: "Clear everything",
+          body: synced
+            ? "Remove your lists, the sync setup and this device's settings? This can't be undone."
+            : "Remove your lists from this device for good? They aren't saved anywhere else. This can't be undone.",
+          yes: "Clear everything",
+        });
+        break;
+      }
       case "change-pass":
         openSheet({ type: "change-pass" });
         break;
@@ -948,6 +1078,10 @@ document.addEventListener("input", (e) => {
   }
 });
 document.addEventListener("change", (e) => {
+  if (e.target.id === "restore-file") {
+    restoreFrom(e.target.files[0]);
+    e.target.value = "";
+  }
   if (e.target.id === "f-list" && sheet?.mode === "addback") $("#addback-btn").innerHTML = addBackLabel(e.target.value);
 });
 // Leaving the add field, with Done above the keyboard or by tapping elsewhere, adds what was typed, as in

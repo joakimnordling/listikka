@@ -141,6 +141,27 @@ describe("sync in Settings", () => {
     assert.ok((await shown(C, "")).includes("Oat milk 2 l"));
   });
 
+  it("Clear data on a synced device warns about unsynced changes, and downloads the lists again", async () => {
+    await A.evaluate(() => clearTimeout(window.__listikka.sync.timer));
+    await A.click(`${row("Bread")} [data-act="tick"]`);
+    await A.evaluate(() => clearTimeout(window.__listikka.sync.timer));
+    await settings(A);
+    await A.click('[data-act="clear"]');
+    assert.match(await A.textContent(".sheet"), /Your servers keep your lists/);
+    assert.match(await A.textContent(".sheet .err"), /^1 change hasn't reached any server yet/);
+    await A.click('[data-act="close-sheet"]');
+    await A.click('[data-act="back"]');
+    await syncNow(A);
+    await settings(A);
+    await A.click('[data-act="clear"]');
+    assert.equal(await A.$(".sheet .err"), null);
+    await A.click('[data-act="clear-copy"]');
+    await Promise.all([A.waitForEvent("load"), A.click('[data-act="confirm-yes"]')]);
+    await A.waitForFunction(() => window.__listikka.sync.status().servers[0]?.last?.ok, null, { timeout: 60000 });
+    assert.ok((await shown(A, "")).includes("Oat milk 2 l"));
+    assert.equal(await A.$eval(row("Bread"), (li) => li.classList.contains("done")), false);
+  });
+
   it("stops using a server, keeping the lists on the device", async () => {
     await settings(B);
     await B.click(".srow");

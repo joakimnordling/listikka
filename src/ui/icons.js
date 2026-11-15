@@ -22,6 +22,8 @@ export const ICON_NAMES = {
   server: "server",
   refresh: "refresh-cw",
   scan: "scan-line",
+  download: "download",
+  upload: "upload",
 };
 
 // A complete <svg> for an icon role, hidden from screen readers: the button or text next to it says what it is.
