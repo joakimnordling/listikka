@@ -19,6 +19,13 @@ Work in progress: this repository holds the core so far.
   suggestions while typing.
 - `clock.js`: a monotonic clock for the timestamps.
 
+## Sync
+
+Listikka syncs with Lokki's sync package, copied into `vendor/lokki-sync` and pinned to one Lokki commit
+(`vendor/lokki-sync/LOKKI_COMMIT`). To take a newer one, run `scripts/update-sync.sh [commit]` and check that its
+dependencies match `package.json`. `src/sync/app.js` holds Listikka's settings for it: the name `listikka`, the kinds
+`list` and `item`, and the field-by-field merge.
+
 ## Development
 
 Needs Node 22 or later.
@@ -31,4 +38,4 @@ npm run lint
 
 ## Licence
 
-MIT
+MIT. See `THIRD_PARTY_NOTICES.md` for what Listikka uses from others.
