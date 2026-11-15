@@ -1,0 +1,22 @@
+{
+  "name": "listikka",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A shared shopping list that syncs end-to-end encrypted through a server you choose.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test \"tests/unit/**/*.test.js\"",
+    "lint": "biome check ."
+  },
+  "dependencies": {
+    "fractional-indexing": "3.2.0",
+    "hash-wasm": "4.13.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.4"
+  }
+}
