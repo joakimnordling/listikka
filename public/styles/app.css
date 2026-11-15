@@ -663,6 +663,25 @@ svg {
   font-size: 13px;
   white-space: nowrap;
 }
+/* reads as a button: the same pill as Add, outlined */
+.sg-act {
+  flex: none;
+  margin-left: auto;
+  padding: 5px 12px;
+  border: 1.5px solid var(--btn);
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sg .from + .sg-act {
+  margin-left: 0;
+}
+/* the item of the name being typed, already in the list */
+.item.match > .row {
+  background: var(--title);
+  box-shadow: inset 4px 0 0 var(--btn);
+}
 .add-btn {
   flex: none;
   height: 36px;

@@ -120,6 +120,29 @@ export function moveItem(item, key, sorted, { before, after } = {}, clock) {
 // Removed items whose name contains what was typed, from this list first, then from the others.
 // Several with the same name are shown once: the one from this list if there is one, otherwise
 // the most recently removed. Best matches first.
+/**
+ * What adding a typed name does in this list, looking only at items in it with the same name:
+ * {act: "again", item} when it's already there unticked (adding a second one is allowed, but shown first),
+ * {act: "untick", item} when it's there ticked, {act: "back", item} when it was removed, else {act: "new"}.
+ * Items of the same name in other lists don't count, so a name can be on several lists on purpose.
+ */
+export function addAction(typed, key, items, listsById) {
+  const q = matchKey(typed);
+  if (!q) return { act: "new" };
+  const here = items.filter((i) => isLive(i) && matchKey(i.name) === q && listKeyOf(i, listsById) === key);
+  const latest = (s) =>
+    here.filter((i) => state(i) === s).sort((a, b) => (b.ts?.s ?? lastChanged(b)) - (a.ts?.s ?? lastChanged(a)))[0];
+  for (const [s, act] of [
+    ["todo", "again"],
+    ["done", "untick"],
+    ["hidden", "back"],
+  ]) {
+    const item = latest(s);
+    if (item) return { act, item };
+  }
+  return { act: "new" };
+}
+
 export function suggestions(typed, key, items, listsById, limit = 4) {
   const q = matchKey(typed);
   if (!q) return [];
