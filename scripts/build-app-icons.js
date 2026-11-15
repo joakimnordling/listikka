@@ -1,5 +1,8 @@
-// Draws the PNG icons in public/icons from public/icons/listikka-icon.svg, with the browser Playwright installs,
-// then compresses them losslessly (oxipng), as Lokki does with its screenshots.
+// Draws the PNG icons in public/icons with the browser Playwright installs, then compresses them losslessly (oxipng),
+// as Lokki does with its screenshots:
+// - from listikka-icon.svg, square: the app icons, which iOS, Android and desktops round or mask themselves
+// - from favicon.svg, with rounded corners on a transparent background: the browser tab's icons
+// The maskable icon (Android) draws the berry smaller, so it stays inside the circle a launcher may crop it to.
 //   npx playwright install chromium   (once)
 //   npm run app-icons
 import { readFile, writeFile } from "node:fs/promises";
@@ -8,30 +11,28 @@ import { losslessCompressPng } from "@napi-rs/image";
 import { chromium } from "playwright";
 
 const dir = resolve(import.meta.dirname, "..", "public", "icons");
-const svg = await readFile(join(dir, "listikka-icon.svg"), "utf8");
-const icons = [
-  ["favicon-16.png", 16, 1],
-  ["favicon-32.png", 32, 1],
-  ["apple-touch-icon.png", 180, 1],
-  ["icon-192.png", 192, 1],
-  ["icon-512.png", 512, 1],
-  // Maskable: the platform may cut the outer 10% away, so the berry sits smaller on the same background
-  ["icon-maskable-512.png", 512, 0.8],
+const icon = await readFile(join(dir, "listikka-icon.svg"), "utf8");
+const favicon = await readFile(join(dir, "favicon.svg"), "utf8");
+const maskable = icon.replace(/translate\([^)]*\) scale\([^)]*\)/, "translate(80 92.8) scale(3.2)");
+
+const outputs = [
+  ["icon-512.png", icon, 512],
+  ["icon-192.png", icon, 192],
+  ["apple-touch-icon.png", icon, 180],
+  ["icon-maskable-512.png", maskable, 512],
+  ["favicon-32.png", favicon, 32, true],
+  ["favicon-16.png", favicon, 16, true],
 ];
 
-const browser = await chromium.launch();
-const page = await browser.newPage();
-for (const [name, size, scale] of icons) {
-  await page.setViewportSize({ width: size, height: size });
-  const inner = svg.replace(/<svg [^>]*>/, "").replace("</svg>", "");
-  const bg = inner.match(/<rect [^>]*\/>/)[0];
-  const art = inner.replace(bg, "");
-  await page.setContent(
-    `<style>html,body{margin:0}</style><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="${size}" height="${size}">${bg}<g transform="translate(${256 * (1 - scale)} ${256 * (1 - scale)}) scale(${scale})">${art}</g></svg>`,
-  );
-  const png = await page.screenshot({ omitBackground: false });
+const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+for (const [name, svg, size, transparent] of outputs) {
+  const page = await browser.newPage({ viewport: { width: size, height: size } });
+  const sized = svg.replace(/<svg ([^>]*?)>/, `<svg $1 width="${size}" height="${size}">`);
+  await page.setContent(`<style>html,body{margin:0;background:transparent}svg{display:block}</style>${sized}`);
+  const png = await page.screenshot({ omitBackground: !!transparent });
   const small = await losslessCompressPng(png);
   await writeFile(join(dir, name), small);
-  console.log(`${name}: ${png.length} -> ${small.length} bytes`);
+  await page.close();
+  console.log(`${name} (${size}×${size}): ${small.length} bytes`);
 }
 await browser.close();

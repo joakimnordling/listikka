@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <title>Listikka</title>
-  <rect width="512" height="512" fill="#2c2f86"/>
+  <!-- the background overshoots the edges, so scaling never leaves a half-transparent rim -->
+  <rect x="-8" y="-8" width="528" height="528" fill="#2c2f86"/>
   <g transform="translate(36 52) scale(4)">
     <path d="M60 24 C 62 18, 66 13, 70 10" fill="none" stroke="#5f9f62" stroke-width="3" stroke-linecap="round"/>
     <path d="M62 20 C 70 4, 88 4, 92 12 C 94 22, 74 28, 62 20 Z" fill="#5f9f62"/>
