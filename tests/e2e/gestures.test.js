@@ -58,11 +58,38 @@ describe("gestures", () => {
     assert.ok(eggs.y > milk.y);
   });
 
+  it("while held, the row leaves a slot where the item will land", async () => {
+    const slotted = () =>
+      P.$$eval(`section[data-list="${lidl}"] li.item`, (els) =>
+        els.map((li) => (li.classList.contains("dragging") ? "slot" : li.querySelector(".n").textContent)),
+      );
+    const eggs = await P.locator(`${row("Eggs")} .name`).boundingBox();
+    const milk = await P.locator(row("Milk")).boundingBox();
+    await P.mouse.move(eggs.x + 10, eggs.y + 10);
+    await P.mouse.down();
+    await P.waitForSelector("li.item.dragging");
+    assert.deepEqual(await slotted(), ["slot", "Milk"]);
+    await P.mouse.move(eggs.x + 10, milk.y + milk.height - 5, { steps: 12 });
+    assert.deepEqual(await slotted(), ["Milk", "slot"]);
+    await P.mouse.up();
+    assert.deepEqual(await shown(P, lidl), ["Milk", "Eggs"]);
+  });
+
   it("holding an item and dropping it on another list moves it there", async () => {
     const soap = await P.locator(row("Soap")).boundingBox();
     await holdAndDrag(P, `${row("Milk")} .name`, { y: soap.y + soap.height - 5 });
     assert.deepEqual(await shown(P, prisma), ["Soap", "Milk"]);
     assert.deepEqual(await shown(P, lidl), ["Eggs"]);
+  });
+
+  it("dropped on a folded list's title, an item goes to the end of that list", async () => {
+    const toggle = `section[data-list="${prisma}"] [data-act="toggle"]`;
+    await P.click(toggle);
+    const title = await P.locator(`section[data-list="${prisma}"] .list-title`).boundingBox();
+    await holdAndDrag(P, `${row("Eggs")} .name`, { y: title.y + 10 });
+    await P.click(toggle);
+    assert.deepEqual(await shown(P, prisma), ["Soap", "Milk", "Eggs"]);
+    assert.deepEqual(await shown(P, lidl), []);
   });
 
   it("holding a list's title and dragging it reorders the lists", async () => {

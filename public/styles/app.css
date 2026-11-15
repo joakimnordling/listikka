@@ -691,8 +691,13 @@ svg {
   text-align: center;
 }
 
-.dragging {
-  opacity: 0.3;
+.item.dragging {
+  box-sizing: border-box;
+  list-style: none;
+  border: 2px dashed var(--line-strong);
+}
+.item.dragging > * {
+  visibility: hidden;
 }
 .ghost {
   position: fixed;
@@ -700,14 +705,6 @@ svg {
   pointer-events: none;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
   border: 1px solid var(--line-strong);
-}
-.drop-line {
-  position: fixed;
-  z-index: 49;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--accent);
-  pointer-events: none;
 }
 .drop-into {
   box-shadow: inset 0 0 0 2px var(--accent);
