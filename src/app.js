@@ -326,25 +326,42 @@ function updateSugg() {
   else delete ui.drafts[adding];
   savePrefs();
   const typed = inp.value.trim();
-  $(".add-btn")?.toggleAttribute("hidden", !typed);
+  // The button says what adding this name does here; an item already in the list shows first
+  const a = L.addAction(typed, adding, store.items(), byId());
+  const btn = $(".add-btn");
+  if (btn) {
+    btn.toggleAttribute("hidden", !typed);
+    btn.textContent = ADD_LABEL[a.act];
+  }
+  for (const li of $$("li.item.match")) li.classList.remove("match");
+  if (a.act === "again" || a.act === "untick") $(`li.item[data-id="${a.item.id}"]`)?.classList.add("match");
   const c = typed ? L.suggestions(typed, adding, store.items(), byId()) : [];
   // Removed items to bring back; the best match sits closest to the field.
   box.innerHTML = c
     .reverse()
     .map((i) => {
       const from = listOf(i) !== adding ? `<span class="from">from ${esc(listName(listOf(i)))}</span>` : "";
-      return `<button type="button" class="sg" data-sg="${i.id}">${svg("undo", 16)}<span>${esc(i.name)}</span>${i.q ? `<span class="q">${esc(i.q)}</span>` : ""}${from}</button>`;
+      return `<button type="button" class="sg" data-sg="${i.id}">${svg("undo", 16)}<span>${esc(i.name)}</span>${i.q ? `<span class="q">${esc(i.q)}</span>` : ""}${from}<span class="sg-act">Add back</span></button>`;
     })
     .join("");
   // Suggestions grow above the field and would push it under the keyboard
   keepInView($(".add-field"));
 }
 
+const ADD_LABEL = { new: "Add", again: "Add again", untick: "Untick", back: "Add back" };
+
+// Adds what was typed, or, for a name already in this list, unticks it or brings it back (L.addAction).
 async function addFresh(key = adding) {
   const inp = $("#add-input");
   const name = inp?.value.trim();
   if (!name) return;
-  const r = L.addItem(name, key, store.items(), byId(), clock);
+  const a = L.addAction(name, key, store.items(), byId());
+  const r =
+    a.act === "untick"
+      ? L.tick(a.item, clock)
+      : a.act === "back"
+        ? L.addBack(a.item, key, store.items(), byId(), clock)
+        : L.addItem(name, key, store.items(), byId(), clock);
   delete ui.drafts[key];
   if (inp) inp.value = "";
   await save([r]);

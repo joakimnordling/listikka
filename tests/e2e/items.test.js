@@ -63,7 +63,7 @@ describe("items", () => {
     await P.click(`section[data-list="${lidl}"] .add-row`);
     await P.fill("#add-input", "eg");
     const sugg = await P.$$eval("#sugg .sg", (els) => els.map((e) => e.textContent.trim()));
-    assert.deepEqual(sugg, ["Eggs10"]);
+    assert.deepEqual(sugg, ["Eggs10Add back"]);
     await P.click("#sugg .sg");
     assert.equal(await P.textContent("#sheet-title"), "Add back");
     assert.equal(await P.inputValue("#f-q"), "10");
@@ -173,6 +173,63 @@ describe("with the on-screen keyboard", () => {
     );
     await P.evaluate(() => window.__keyboard(0));
     await P.click('[data-act="sheet-done"]');
+  });
+
+  it("had no script errors", () => assert.deepEqual(h.errors, []));
+});
+
+describe("adding a name that's already in the list", () => {
+  let h, P, lidl, prisma;
+  const label = () => P.textContent(".add-btn");
+  before(async () => {
+    h = await startHarness();
+    P = await h.device();
+    lidl = await newList(P, "Lidl");
+    prisma = await newList(P, "Prisma");
+    await addItems(P, lidl, "Coffee", "Milk", "Bread");
+    await addItems(P, prisma, "Bananas");
+    await P.click(`${row("Coffee")} [data-act="edit"]`);
+    await P.click('[data-act="sheet-remove"]');
+    await P.click(`${row("Bread")} [data-act="tick"]`);
+  });
+  after(() => h.close());
+
+  it("the removed one's whole name: Add back brings it back instead of a second one", async () => {
+    await P.click(`section[data-list="${lidl}"] .add-row`);
+    await P.fill("#add-input", "Co");
+    assert.equal(await label(), "Add");
+    assert.equal(await P.textContent("#sugg .sg .sg-act"), "Add back");
+    await P.fill("#add-input", "coffee");
+    assert.equal(await label(), "Add back");
+    await P.press("#add-input", "Enter");
+    assert.deepEqual(await shown(P, lidl), ["Coffee", "Milk", "Bread"], "back in its place");
+    assert.equal(await P.$$eval(`section[data-list="${lidl}"] li.item`, (els) => els.length), 3);
+  });
+
+  it("a ticked one's name: Untick", async () => {
+    await P.fill("#add-input", "Bread");
+    assert.equal(await label(), "Untick");
+    assert.ok(await P.$eval(row("Bread"), (li) => li.classList.contains("match")), "the row is shown");
+    await P.press("#add-input", "Enter");
+    assert.equal(await P.$eval(row("Bread"), (li) => li.classList.contains("done")), false);
+  });
+
+  it("an unticked one's name: the row is shown, and Add again adds a second one", async () => {
+    await P.fill("#add-input", "milk");
+    assert.equal(await label(), "Add again");
+    assert.ok(await P.$eval(row("Milk"), (li) => li.classList.contains("match")));
+    await P.click(".add-btn");
+    assert.deepEqual(await shown(P, lidl), ["Coffee", "Milk", "Bread", "milk"]);
+    assert.equal(await P.$("li.item.match"), null);
+  });
+
+  it("a name only on another list: Add, so it can be on both", async () => {
+    await P.fill("#add-input", "Bananas");
+    assert.equal(await label(), "Add");
+    await P.press("#add-input", "Enter");
+    await P.press("#add-input", "Escape");
+    assert.deepEqual(await shown(P, prisma), ["Bananas"]);
+    assert.ok((await shown(P, lidl)).includes("Bananas"));
   });
 
   it("had no script errors", () => assert.deepEqual(h.errors, []));

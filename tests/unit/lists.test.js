@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { createClock } from "../../src/core/clock.js";
 import {
   activeLists,
+  addAction,
   addBack,
   addItem,
   createList,
@@ -304,6 +305,43 @@ describe("adding back", () => {
     const back = addBack(jam, lidl.id, items, byId(), c);
     const gone = { kind: "item", id: jam.id, d: true, ts: { d: 1 } };
     assert.equal(merge(back, gone).d, true);
+  });
+});
+
+describe("adding a name that's already in the list", () => {
+  it("brings back a removed item of that name, in any case and spacing", () => {
+    const { items, L, I, byId } = setup();
+    const lidl = L("Lidl");
+    const coffee = I("Coffee", lidl.id, "hidden");
+    assert.deepEqual(addAction("  coffee ", lidl.id, items, byId()), { act: "back", item: coffee });
+    assert.deepEqual(addAction("Cof", lidl.id, items, byId()), { act: "new" }, "only the whole name");
+  });
+
+  it("unticks a ticked one, and shows an unticked one before adding it again", () => {
+    const { items, L, I, byId } = setup();
+    const lidl = L("Lidl");
+    I("Milk", lidl.id, "hidden");
+    const ticked = I("Milk", lidl.id, "done");
+    assert.deepEqual(addAction("milk", lidl.id, items, byId()), { act: "untick", item: ticked });
+    const unticked = I("MILK", lidl.id);
+    assert.deepEqual(addAction("milk", lidl.id, items, byId()), { act: "again", item: unticked });
+  });
+
+  it("adds a new one when the name is only on other lists, so it can be on several", () => {
+    const { items, L, I, byId } = setup();
+    const lidl = L("Lidl");
+    const prisma = L("Prisma");
+    I("Bananas", prisma.id);
+    I("Bananas", lidl.id, "hidden");
+    assert.deepEqual(addAction("Bananas", UNNAMED, items, byId()), { act: "new" });
+    assert.equal(addAction("Bananas", lidl.id, items, byId()).act, "back");
+  });
+
+  it("adds a new one for empty input or a new name", () => {
+    const { items, L, byId } = setup();
+    const lidl = L("Lidl");
+    assert.deepEqual(addAction(" ", lidl.id, items, byId()), { act: "new" });
+    assert.deepEqual(addAction("Tea", lidl.id, items, byId()), { act: "new" });
   });
 });
 
