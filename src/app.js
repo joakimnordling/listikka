@@ -12,6 +12,7 @@ import { createIdb } from "./data/idb.js";
 import { createStore } from "./data/store.js";
 import { createSync, OTHER_APP } from "./sync/manager.js";
 import { svg } from "./ui/icons.js";
+import { keepInView, watchKeyboard } from "./ui/keyboard.js";
 import { canScan, scanPairing } from "./ui/scan.js";
 import { checkForUpdate, watchForUpdates } from "./ui/update.js";
 
@@ -207,7 +208,7 @@ function renderItem(i, rm) {
 function renderAdd(key, l) {
   const label = l ? `Add to ${esc(l.name)}` : "Add item";
   if (adding === key) {
-    return `<form class="add" data-add="${key}" autocomplete="off"><div class="sugg" id="sugg"></div><div class="add-field">${svg("plus", 16)}<input id="add-input" name="item" aria-label="${label}" placeholder="${label}" value="${esc(ui.drafts[key] || "")}" enterkeyhint="enter"></div></form>`;
+    return `<form class="add" data-add="${key}" autocomplete="off"><div class="sugg" id="sugg"></div><div class="add-field">${svg("plus", 16)}<input id="add-input" name="item" aria-label="${label}" placeholder="${label}" value="${esc(ui.drafts[key] || "")}" enterkeyhint="next"><button class="add-btn" type="submit"${ui.drafts[key]?.trim() ? "" : " hidden"}>Add</button></div></form>`;
   }
   const draft = ui.drafts[key];
   return `<button class="add-row" data-act="add">${svg("plus", 16)}${draft ? `<em>${esc(draft)}</em><span class="tag">Draft</span>` : `<span>${label}</span>`}</button>`;
@@ -302,29 +303,24 @@ function updateSugg() {
   else delete ui.drafts[adding];
   savePrefs();
   const typed = inp.value.trim();
-  if (!typed) {
-    box.innerHTML = "";
-    return;
-  }
-  const c = L.suggestions(typed, adding, store.items(), byId());
-  const fresh = `<button type="button" class="sg fresh" data-sg="">${svg("plus", 16)}<span>Add “${esc(typed)}”</span></button>`;
-  // The best match sits closest to the field; the fresh row stays on top.
-  box.innerHTML =
-    fresh +
-    c
-      .reverse()
-      .map((i) => {
-        const from = listOf(i) !== adding ? `<span class="from">from ${esc(listName(listOf(i)))}</span>` : "";
-        return `<button type="button" class="sg" data-sg="${i.id}">${svg("undo", 16)}<span>${esc(i.name)}</span>${i.q ? `<span class="q">${esc(i.q)}</span>` : ""}${from}</button>`;
-      })
-      .join("");
+  $(".add-btn")?.toggleAttribute("hidden", !typed);
+  const c = typed ? L.suggestions(typed, adding, store.items(), byId()) : [];
+  // Removed items to bring back; the best match sits closest to the field.
+  box.innerHTML = c
+    .reverse()
+    .map((i) => {
+      const from = listOf(i) !== adding ? `<span class="from">from ${esc(listName(listOf(i)))}</span>` : "";
+      return `<button type="button" class="sg" data-sg="${i.id}">${svg("undo", 16)}<span>${esc(i.name)}</span>${i.q ? `<span class="q">${esc(i.q)}</span>` : ""}${from}</button>`;
+    })
+    .join("");
+  // Suggestions grow above the field and would push it under the keyboard
+  keepInView($(".add-field"));
 }
 
-async function addFresh() {
+async function addFresh(key = adding) {
   const inp = $("#add-input");
   const name = inp?.value.trim();
   if (!name) return;
-  const key = adding;
   const r = L.addItem(name, key, store.items(), byId(), clock);
   delete ui.drafts[key];
   if (inp) inp.value = "";
@@ -348,7 +344,7 @@ function placeToast() {
   const t = $(".toast");
   if (!t) return;
   const s = $(".sheet");
-  t.style.bottom = s ? `${s.getBoundingClientRect().height + 12}px` : "";
+  t.style.bottom = s ? `calc(${s.getBoundingClientRect().height + 12}px + var(--kb, 0px))` : "";
 }
 
 function listOptions(selected, item) {
@@ -388,9 +384,9 @@ function renderSheet() {
     const title = addback ? "Add back" : state(i) === "hidden" ? "Removed item" : "Item";
     body = `<h2 id="sheet-title">${title}</h2>
         <label class="field">Name<input id="f-name" value="${esc(i.name)}"></label>
-        <div class="two"><label class="field">Quantity<input id="f-q" value="${esc(i.q || "")}" placeholder="2 l"></label>
+        <div class="two"><label class="field">Quantity<input id="f-q" value="${esc(i.q || "")}"></label>
         <label class="field">List<select id="f-list">${listOptions(lk, i)}</select></label></div>
-        <label class="field">Note<input id="f-note" value="${esc(i.note || "")}" placeholder="For the pasta"></label>`;
+        <label class="field">Note<input id="f-note" value="${esc(i.note || "")}"></label>`;
     if (addback)
       body += `<button class="primary" data-act="addback-confirm" id="addback-btn">${addBackLabel(lk)}</button><button class="quiet" data-act="close-sheet">Cancel</button>`;
     else
@@ -634,8 +630,7 @@ document.addEventListener(
     const sg = e.target.closest("[data-sg]");
     if (sg) {
       e.preventDefault();
-      if (!sg.dataset.sg) addFresh();
-      else openSheet({ type: "item", id: sg.dataset.sg, mode: "addback", key: adding });
+      openSheet({ type: "item", id: sg.dataset.sg, mode: "addback", key: adding });
       return;
     }
     const b = e.target.closest("[data-act]");
@@ -916,9 +911,9 @@ document.addEventListener(
   true,
 );
 
-// Keep focus in the add field while picking a suggestion.
+// Keep focus in the add field while picking a suggestion or tapping Add.
 document.addEventListener("mousedown", (e) => {
-  if (e.target.closest("[data-sg]")) e.preventDefault();
+  if (e.target.closest("[data-sg], .add-btn")) e.preventDefault();
 });
 
 document.addEventListener("submit", (e) => {
@@ -955,12 +950,16 @@ document.addEventListener("input", (e) => {
 document.addEventListener("change", (e) => {
   if (e.target.id === "f-list" && sheet?.mode === "addback") $("#addback-btn").innerHTML = addBackLabel(e.target.value);
 });
+// Leaving the add field, with Done above the keyboard or by tapping elsewhere, adds what was typed, as in
+// Reminders. Escape, or leaving the app, keeps it as a draft instead.
 document.addEventListener("focusout", (e) => {
   if (e.target.id !== "add-input" || rendering) return;
   setTimeout(() => {
     if (rendering || sheet) return;
     if (document.activeElement?.id !== "add-input" && adding !== null) {
+      const key = adding;
       adding = null;
+      if (document.visibilityState === "visible") addFresh(key);
       render();
     }
   }, 0);
@@ -1320,6 +1319,14 @@ function endReorder(cancelled) {
 }
 
 /* ---------- Start ---------- */
+// The field being typed in stays above the keyboard, in the list or in a sheet.
+const typingIn = () => {
+  const a = document.activeElement;
+  return a?.id === "add-input" ? $(".add-field") : a?.closest(".sheet") && a.matches("input, select") ? a : null;
+};
+watchKeyboard(() => keepInView(typingIn()));
+document.addEventListener("focusin", () => setTimeout(() => keepInView(typingIn()), 0));
+
 store.onChange(() => {
   for (const r of [...store.lists(), ...store.items()]) clock.observeRecord(r);
   render();
