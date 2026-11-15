@@ -26,6 +26,9 @@ export const NAMES = [
   "broom-sparkles",
   "undo-2",
   "trash-2",
+  // backups
+  "download",
+  "upload",
   // sync
   "server",
   "refresh-cw",

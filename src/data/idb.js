@@ -54,6 +54,33 @@ export function createIdb(name = DB_NAME, factory = globalThis.indexedDB) {
         }
       });
     },
+    /** Empties these stores, in one transaction. */
+    clear(names) {
+      if (!this.db) return Promise.resolve();
+      return new Promise((res) => {
+        try {
+          const tx = this.db.transaction(names, "readwrite");
+          for (const n of names) tx.objectStore(n).clear();
+          tx.oncomplete = () => res();
+          tx.onerror = tx.onabort = () => res();
+        } catch (_e) {
+          res();
+        }
+      });
+    },
+    /** Deletes the whole database. */
+    destroy() {
+      this.db?.close();
+      this.db = null;
+      return new Promise((res) => {
+        try {
+          const r = factory.deleteDatabase(name);
+          r.onsuccess = r.onerror = r.onblocked = () => res();
+        } catch (_e) {
+          res();
+        }
+      });
+    },
   };
 }
 
@@ -71,6 +98,12 @@ export function createMemoryDb() {
         if (op === "put") stores.get(n).set(v[keyOf(n)], structuredClone(v));
         else stores.get(n).delete(v);
       }
+    },
+    async clear(names) {
+      for (const n of names) stores.get(n).clear();
+    },
+    async destroy() {
+      for (const m of stores.values()) m.clear();
     },
   };
 }
