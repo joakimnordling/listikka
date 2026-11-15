@@ -16,6 +16,7 @@ import { createStore } from "./data/store.js";
 import { createSync, OTHER_APP } from "./sync/manager.js";
 import { fileStamp, readText, saveFile } from "./ui/files.js";
 import { svg } from "./ui/icons.js";
+import { installWay, promptInstall, watchInstall } from "./ui/install.js";
 import { keepInView, watchKeyboard } from "./ui/keyboard.js";
 import { canScan, scanPairing } from "./ui/scan.js";
 import { checkForUpdate, watchForUpdates } from "./ui/update.js";
@@ -144,6 +145,17 @@ function syncDot() {
   return s ? `<span class="dot${s === "bad" ? " bad" : ""}" aria-hidden="true"></span>` : "";
 }
 
+// Until dismissed, a card at the bottom of the lists offers putting Listikka on the Home Screen (src/ui/install.js).
+function installHint() {
+  const way = installWay();
+  if (!way || ui.installDismissed) return "";
+  const act =
+    way === "prompt"
+      ? `<button class="link" data-act="install">Install</button>`
+      : `<button class="link" data-act="install-steps">Show how</button>`;
+  return `<div class="install-hint">${svg("home")}<div><b>Put Listikka on your Home Screen</b><span>It then opens like an app, full screen, and works offline.</span>${act}</div><button class="x" data-act="install-dismiss" aria-label="Don't show again">${svg("x", 18)}</button></div>`;
+}
+
 function renderMain() {
   const label = sync.headerState() === "bad" ? "Menu, a sync server has a problem" : "Menu";
   let h = `<header class="top"><h1>Listikka</h1><button class="icon-btn dot-host" data-act="app-menu" aria-label="${label}">${svg("more", 24)}${syncDot()}</button></header>`;
@@ -154,6 +166,7 @@ function renderMain() {
   if (!lists) h += `<button class="new-list" data-act="new-list">${svg("plus", 16)}New list</button>`;
   if (!lists && liveItems().length < 3 && !sync.servers.length)
     h += `<p class="hint">Sharing with someone? Set up sync in Settings.</p>`;
+  h += installHint();
   h += `</div></div>`;
   return h;
 }
@@ -467,6 +480,7 @@ function renderSheet() {
     m += removedAll
       ? `<button data-act="a-hide-removed">${svg("eyeOff")}Hide removed items</button>`
       : `<button data-act="a-show-removed">${svg("broom")}Show removed items</button>`;
+    if (installWay()) m += `<button data-act="install">${svg("home")}Add to Home Screen</button>`;
     m += `<button data-act="a-settings">${svg("cog")}Settings${syncDot()}</button>`;
     body = `<h2 id="sheet-title">Listikka</h2><div class="menu">${m}</div><button class="primary" data-act="close-sheet">Cancel</button>`;
   } else if (sheet.type === "name") {
@@ -478,6 +492,15 @@ function renderSheet() {
     body = `<h2 id="sheet-title">${esc(sheet.title)}</h2><p>${esc(sheet.body)}</p>${err}
         <button class="danger" data-act="confirm-yes">${svg(sheet.icon || "trash", 18)}${esc(sheet.yes || "Delete permanently")}</button>
         <button class="primary" data-act="close-sheet">Cancel</button>`;
+  } else if (sheet.type === "install") {
+    body = `<h2 id="sheet-title">Add to Home Screen</h2>
+        <p>Listikka then opens from its own icon, full screen like an app, and works offline.</p>
+        <ol class="steps">
+          <li><span>In Safari, tap <b>Share</b> <span class="ic">${svg("share", 16)}</span>. It's in the menu next to the address, or in the toolbar on older iOS versions.</span></li>
+          <li><span>Tap <b>Add to Home Screen</b>. If it isn't there, tap <b>View more</b> first.</span></li>
+          <li><span>Tap <b>Add</b>.</span></li>
+        </ol>
+        <button class="primary" data-act="close-sheet">Done</button>`;
   } else if (sheet.type === "notice") {
     body = `<h2 id="sheet-title">${esc(sheet.title)}</h2><p>${esc(sheet.body)}</p>
         <button class="primary" data-act="close-sheet">Close</button>`;
@@ -803,6 +826,19 @@ document.addEventListener(
       case "a-show-ticked":
         for (const k of allKeys()) ui.hide[k] = false;
         closeSheet();
+        render();
+        break;
+      case "install":
+        if (installWay() === "prompt") {
+          closeSheet();
+          promptInstall().then(render);
+        } else openSheet({ type: "install" });
+        break;
+      case "install-steps":
+        openSheet({ type: "install" });
+        break;
+      case "install-dismiss":
+        ui.installDismissed = true;
         render();
         break;
       case "a-settings":
@@ -1460,6 +1496,10 @@ const typingIn = () => {
 };
 watchKeyboard(() => keepInView(typingIn()));
 document.addEventListener("focusin", () => setTimeout(() => keepInView(typingIn()), 0));
+
+watchInstall(() => {
+  if (view === "main") render();
+});
 
 store.onChange(() => {
   for (const r of [...store.lists(), ...store.items()]) clock.observeRecord(r);

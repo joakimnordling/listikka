@@ -42,8 +42,8 @@ export async function startHarness({ args = [] } = {}) {
   const errors = [];
 
   /** A new device: its own browser context, with the app loaded and ready. Script errors go to `errors`. */
-  async function device({ viewport = { width: 393, height: 852 } } = {}) {
-    const ctx = await browser.newContext({ viewport, serviceWorkers: "block" });
+  async function device({ viewport = { width: 393, height: 852 }, userAgent } = {}) {
+    const ctx = await browser.newContext({ viewport, serviceWorkers: "block", ...(userAgent ? { userAgent } : {}) });
     const pg = await ctx.newPage();
     pg.on("pageerror", (e) => errors.push(e.message));
     await pg.goto(`${base}/`);
