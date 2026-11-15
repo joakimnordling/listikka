@@ -344,7 +344,7 @@ function placeToast() {
   const t = $(".toast");
   if (!t) return;
   const s = $(".sheet");
-  t.style.bottom = s ? `${s.getBoundingClientRect().height + 12}px` : "";
+  t.style.bottom = s ? `calc(${s.getBoundingClientRect().height + 12}px + var(--kb, 0px))` : "";
 }
 
 function listOptions(selected, item) {

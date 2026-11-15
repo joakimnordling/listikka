@@ -946,7 +946,7 @@ svg {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px) + var(--kb, 0px));
   z-index: 70;
   transform: translateX(-50%);
   width: max-content;
