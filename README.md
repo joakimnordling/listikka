@@ -19,12 +19,19 @@ Work in progress: this repository holds the core so far.
   suggestions while typing.
 - `clock.js`: a monotonic clock for the timestamps.
 
+## Storage
+
+`src/data/` keeps every list and item in memory and in IndexedDB, in the protocol's shape with its server bits
+(`sb`). A change made on this device is merged with the version kept here and saved with no bits, so every server
+gets it.
+
 ## Sync
 
 Listikka syncs with Lokki's sync package, copied into `vendor/lokki-sync` and pinned to one Lokki commit
 (`vendor/lokki-sync/LOKKI_COMMIT`). To take a newer one, run `scripts/update-sync.sh [commit]` and check that its
 dependencies match `package.json`. `src/sync/app.js` holds Listikka's settings for it: the name `listikka`, the kinds
-`list` and `item`, and the field-by-field merge.
+`list` and `item`, and the field-by-field merge. `src/sync/device.js` is the engine's device over the store, and `src/sync/manager.js`
+the shared manager with Listikka's settings.
 
 ## Development
 
