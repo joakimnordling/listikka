@@ -1,4 +1,12 @@
-# Listikka
+<p align="center"><img src="public/icons/listikka-icon.svg" width="96" height="96" alt=""></p>
+
+<h1 align="center">Listikka</h1>
+
+<p align="center">
+  <img src="docs/screenshots/lists.png" width="250" alt="Lists for a supermarket and a pharmacy, with ticked items crossed out">
+  <img src="docs/screenshots/adding.png" width="250" alt="Typing Co in the supermarket list offers back Coffee, removed earlier, above the field">
+  <img src="docs/screenshots/item.png" width="250" alt="An item's sheet: Milk, 2 l, in Supermarket, with the note Lactose free">
+</p>
 
 Lists for shopping and more. Lists hold items, and removed items stay remembered as suggestions until deleted
 permanently. Everything is kept on the device; it can also sync between devices through a
@@ -53,6 +61,7 @@ npm test
 npm run lint
 npm run build        # the site in dist/site
 npm run serve        # dist/site on http://localhost:8080
+npm run screenshots  # regenerate docs/screenshots after a visual change
 ```
 
 ## Tests
