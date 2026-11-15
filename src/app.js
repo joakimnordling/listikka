@@ -1170,6 +1170,8 @@ function capture(pid) {
   }
 }
 
+// Item move: press and hold a row. The held row stays in the page as a dashed slot and moves to where the item
+// will land, as the held list does when reordering lists.
 function startItemDrag(li, x, y, pid) {
   closeSwipe();
   if (!li.isConnected) return;
@@ -1178,15 +1180,11 @@ function startItemDrag(li, x, y, pid) {
   ghost.classList.add("ghost");
   Object.assign(ghost.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px` });
   document.body.appendChild(ghost);
-  const line = document.createElement("div");
-  line.className = "drop-line";
-  line.hidden = true;
-  document.body.appendChild(line);
   li.classList.add("dragging");
   capture(pid);
   suppressClick = true;
   navigator.vibrate?.(12);
-  drag = { id: li.dataset.id, li, ghost, line, offY: y - r.top, target: null, lastY: y, lastX: x };
+  drag = { id: li.dataset.id, li, ghost, from: [li.parentNode, li.nextSibling], offY: y - r.top, lastY: y, lastX: x };
   drag.scrollTimer = setInterval(autoScroll, 16);
 }
 function autoScroll() {
@@ -1202,61 +1200,53 @@ function moveItemDrag(x, y) {
   drag.lastX = x;
   drag.lastY = y;
   drag.ghost.style.top = `${y - drag.offY}px`;
+  const held = drag.li;
   const el = document.elementFromPoint(x, y);
+  const sec = el?.closest("section[data-list]");
+  if (!sec || el.closest("li.item") === held) return;
   for (const n of $$(".drop-into")) n.classList.remove("drop-into");
-  if (!el) return;
-  const sec = el.closest("section[data-list]");
-  if (!sec) return;
-  const k = sec.dataset.list;
-  const app = $("#app").getBoundingClientRect();
-  const showLine = (top) => {
-    Object.assign(drag.line.style, { left: `${app.left + 8}px`, width: `${app.width - 16}px`, top: `${top - 1}px` });
-    drag.line.hidden = false;
-  };
+  const title = $(".list-title", sec);
+  const ul = $(":scope > ul.items", sec);
+  // A folded list, or one showing its removed items: the slot waits under the title and the item goes to the end
+  if (!ul || $('[data-act="exit-removed"]', sec)) {
+    if (title.nextElementSibling !== held) title.after(held);
+    title.classList.add("drop-into");
+    return;
+  }
   const li = el.closest("li.item");
-  if (li && li !== drag.li) {
+  let anchor;
+  if (li && ul.contains(li)) {
     const r = li.getBoundingClientRect();
-    const before = y < r.top + r.height / 2;
-    drag.target = { key: k, ref: li.dataset.id, before };
-    showLine(before ? r.top : r.bottom);
-    return;
-  }
-  if (li === drag.li) {
-    drag.target = null;
-    drag.line.hidden = true;
-    return;
-  }
-  const add = el.closest(".add-row, form.add, .hidden-note");
-  if (add) {
-    drag.target = { key: k, end: true };
-    showLine(add.getBoundingClientRect().top);
-    return;
-  }
-  if (el.closest(".list-title")) {
-    drag.target = { key: k, end: true };
-    drag.line.hidden = true;
-    sec.querySelector(".list-title").classList.add("drop-into");
-  }
+    anchor = y < r.top + r.height / 2 ? li : li.nextElementSibling;
+  } else if (el.closest(".list-title")) anchor = ul.firstElementChild;
+  else if (el.closest(".add-row, form.add, .hidden-note")) anchor = null;
+  else return;
+  if (anchor === held || (held.parentNode === ul && held.nextElementSibling === anchor)) return;
+  ul.insertBefore(held, anchor);
 }
 function endItemDrag(cancelled) {
   clearInterval(drag.scrollTimer);
   drag.ghost.remove();
-  drag.line.remove();
-  drag.li.classList.remove("dragging");
   for (const n of $$(".drop-into")) n.classList.remove("drop-into");
-  const { id, target } = drag;
+  const { id, li, from } = drag;
   drag = null;
   suppressClick = true;
   setTimeout(() => {
     suppressClick = false;
   }, 0);
   const it = getItem(id);
-  if (cancelled || !target || !it) {
+  const sec = li.closest("section[data-list]");
+  const moved = li.parentNode !== from[0] || li.nextSibling !== from[1];
+  if (cancelled || !moved || !it || !sec) {
     render();
     return;
   }
-  const where = target.end ? {} : target.before ? { before: target.ref } : { after: target.ref };
-  save([L.moveItem(it, target.key, itemsIn(target.key), where, clock)]).then((changed) => {
+  // Placed after the row above it, or before the row below; ticked items hidden in between keep their places
+  const inList = li.parentNode.matches("ul.items");
+  const prev = inList && li.previousElementSibling;
+  const next = inList && li.nextElementSibling;
+  const where = prev ? { after: prev.dataset.id } : next ? { before: next.dataset.id } : {};
+  save([L.moveItem(it, sec.dataset.list, itemsIn(sec.dataset.list), where, clock)]).then((changed) => {
     if (!changed.length) render();
   });
 }
