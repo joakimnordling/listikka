@@ -228,6 +228,9 @@ svg {
 #app {
   max-width: 480px;
   height: 100%;
+  /* ends above the on-screen keyboard (src/ui/keyboard.js) */
+  box-sizing: border-box;
+  padding-bottom: var(--kb, 0px);
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -660,8 +663,16 @@ svg {
   font-size: 13px;
   white-space: nowrap;
 }
-.sg.fresh {
-  color: var(--dim);
+.add-btn {
+  flex: none;
+  height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--btn);
+  color: var(--btn-fg);
+  font-size: 15px;
+  font-weight: 600;
 }
 .hidden-note {
   padding: 8px 16px 8px 56px;
@@ -792,7 +803,7 @@ svg {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: var(--kb, 0px);
   z-index: 61;
   max-width: 480px;
   margin: 0 auto;
@@ -804,7 +815,7 @@ svg {
   background: var(--panel);
   color: var(--ink);
   animation: up 0.2s ease-out;
-  max-height: 92%;
+  max-height: calc(92% - var(--kb, 0px));
   overflow-y: auto;
 }
 .sheet h2 {

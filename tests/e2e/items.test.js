@@ -1,4 +1,4 @@
-// Items: adding, ticking, editing, removing with Undo, adding back from suggestions, drafts, and keeping it all.
+// Items: adding, ticking, editing, removing with Undo, adding back from suggestions, drafts, keeping it all, and the on-screen keyboard.
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import { addItems, items, newList, ready, row, shown, startHarness, toastText } from "./harness.js";
@@ -63,8 +63,8 @@ describe("items", () => {
     await P.click(`section[data-list="${lidl}"] .add-row`);
     await P.fill("#add-input", "eg");
     const sugg = await P.$$eval("#sugg .sg", (els) => els.map((e) => e.textContent.trim()));
-    assert.deepEqual(sugg, ["Add “eg”", "Eggs10"]);
-    await P.click('#sugg .sg[data-sg]:not([data-sg=""])');
+    assert.deepEqual(sugg, ["Eggs10"]);
+    await P.click("#sugg .sg");
     assert.equal(await P.textContent("#sheet-title"), "Add back");
     assert.equal(await P.inputValue("#f-q"), "10");
     await P.click('[data-act="addback-confirm"]');
@@ -72,7 +72,25 @@ describe("items", () => {
     assert.deepEqual(await shown(P, lidl), ["Oat milk 2 l", "Eggs 10"]);
   });
 
-  it("keeps typed text as a draft when the field closes, and offers it again", async () => {
+  it("Add, shown once something is typed, adds it and keeps the field open", async () => {
+    await P.click('section[data-list=""] .add-row');
+    assert.equal(await P.isVisible(".add-btn"), false);
+    await P.fill("#add-input", "Tape");
+    await P.click(".add-btn");
+    assert.deepEqual(await shown(P, ""), ["Batteries", "Bread", "Tape"]);
+    assert.equal(await P.evaluate(() => document.activeElement?.id), "add-input");
+    assert.equal(await P.isVisible(".add-btn"), false);
+  });
+
+  it("leaving the field, as Done above the keyboard does, adds what was typed", async () => {
+    await P.fill("#add-input", "Glue");
+    await P.evaluate(() => document.activeElement.blur());
+    await P.waitForSelector("#add-input", { state: "detached" });
+    assert.deepEqual(await shown(P, ""), ["Batteries", "Bread", "Tape", "Glue"]);
+    assert.equal(await P.$('section[data-list=""] .add-row em'), null);
+  });
+
+  it("Escape keeps typed text as a draft, and offers it again", async () => {
     await P.click(`section[data-list="${lidl}"] .add-row`);
     await P.fill("#add-input", "Chee");
     await P.press("#add-input", "Escape");
@@ -88,10 +106,73 @@ describe("items", () => {
     await P.reload();
     await ready(P);
     assert.deepEqual(await shown(P, lidl), ["Oat milk 2 l", "Eggs 10"]);
-    assert.deepEqual(await shown(P, ""), ["Batteries", "Bread"]);
+    assert.deepEqual(await shown(P, ""), ["Batteries", "Bread", "Tape", "Glue"]);
     const milk = (await items(P)).find((i) => i.name === "Oat milk");
     assert.equal(milk.note, "The barista one");
     assert.ok(milk.ts.name > 0 && milk.ts.q > 0);
+  });
+
+  it("had no script errors", () => assert.deepEqual(h.errors, []));
+});
+
+describe("with the on-screen keyboard", () => {
+  let h, P;
+  before(async () => {
+    h = await startHarness();
+    P = await h.device();
+    // iOS lays the keyboard over the page: the visual viewport shrinks and the page doesn't
+    await P.addInitScript(() => {
+      const vv = new EventTarget();
+      let kb = 0;
+      Object.defineProperties(vv, {
+        width: { get: () => window.innerWidth },
+        height: { get: () => window.innerHeight - kb },
+        offsetTop: { get: () => 0 },
+        offsetLeft: { get: () => 0 },
+        scale: { get: () => 1 },
+      });
+      Object.defineProperty(window, "visualViewport", { get: () => vv });
+      window.__keyboard = (n) => {
+        kb = n;
+        vv.dispatchEvent(new Event("resize"));
+      };
+    });
+    await P.reload();
+    await ready(P);
+  });
+  after(() => h.close());
+
+  const KB = 340;
+  const above = (sel) => P.$eval(sel, (el, kb) => el.getBoundingClientRect().bottom <= window.innerHeight - kb + 1, KB);
+
+  it("keeps the field being typed in above it while suggestions grow", async () => {
+    const lidl = await newList(P, "Lidl");
+    const names = Array.from({ length: 12 }, (_, n) => `Thing ${n + 1}`);
+    await addItems(P, lidl, ...names);
+    for (const n of names.slice(0, 4)) {
+      await P.click(`${row(n)} [data-act="edit"]`);
+      await P.click('[data-act="sheet-remove"]');
+    }
+    await P.click(`section[data-list="${lidl}"] .add-row`);
+    await P.evaluate((kb) => window.__keyboard(kb), KB);
+    await P.fill("#add-input", "Thing");
+    assert.equal(await P.$$eval("#sugg .sg", (els) => els.length), 4);
+    assert.ok(await above(".add-field"), "the field shows above the keyboard");
+    await P.press("#add-input", "Escape");
+  });
+
+  it("lifts sheets above it, and shows the field being typed in", async () => {
+    await P.click(`${row("Thing 12")} [data-act="edit"]`);
+    await P.focus("#f-note");
+    await P.evaluate((kb) => window.__keyboard(kb), KB);
+    await P.waitForTimeout(300); // the sheet slides in
+    assert.ok(await above(".sheet"), "the sheet ends above the keyboard");
+    await P.waitForFunction(
+      (kb) => document.querySelector("#f-note").getBoundingClientRect().bottom <= window.innerHeight - kb + 1,
+      KB,
+    );
+    await P.evaluate(() => window.__keyboard(0));
+    await P.click('[data-act="sheet-done"]');
   });
 
   it("had no script errors", () => assert.deepEqual(h.errors, []));
