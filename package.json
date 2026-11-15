@@ -14,7 +14,9 @@
     "build": "node scripts/build-site.js",
     "serve": "node scripts/serve.js",
     "test": "node --test \"tests/unit/**/*.test.js\"",
-    "lint": "biome check ."
+    "lint": "biome check .",
+    "test:e2e": "node scripts/build-site.js && node --test --test-concurrency=1 \"tests/e2e/**/*.test.js\"",
+    "test:sync": "node --test \"tests/sync/**/*.test.js\""
   },
   "dependencies": {
     "fractional-indexing": "3.2.0",

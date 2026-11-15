@@ -14,3 +14,4 @@ blob-report/
 *.jsonl.gz
 listikka-backup-*.zip
 .env
+.lokki/

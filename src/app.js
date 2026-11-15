@@ -25,6 +25,8 @@ const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const clock = createClock();
 const store = createStore(createIdb());
 const sync = createSync(store);
+// For the end-to-end tests (tests/e2e), as Lokki's window.__lokki
+window.__listikka = { store, sync };
 
 const byId = () => L.indexLists(store.lists());
 const activeLists = () => L.activeLists(store.lists());
@@ -256,7 +258,7 @@ function renderSettings() {
       <div class="seg" role="group" aria-label="Theme">${themes.map(([v, t]) => `<button data-act="theme" data-v="${v}" aria-pressed="${ui.theme === v}">${t}</button>`).join("")}</div>
       <p class="text dim" style="padding-top: 8px">Dark is the default. Automatic follows the device: Light, or Dark when the device is in dark mode.</p>
       <h2>Sync</h2>
-      <p class="text">${esc(syncSummary())}</p>
+      <p class="text" id="sync-summary">${esc(syncSummary())}</p>
       ${servers}
       <button class="nav-row" data-act="add-server">${svg("plus")}Add server</button>
       ${st.servers.length ? `<button class="nav-row" data-act="sync-now" style="border-top: 0">${svg("refresh")}Sync now</button>` : ""}
