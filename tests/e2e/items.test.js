@@ -234,3 +234,48 @@ describe("adding a name that's already in the list", () => {
 
   it("had no script errors", () => assert.deepEqual(h.errors, []));
 });
+
+describe("the quantity's − and +", () => {
+  let h, P, lidl;
+  before(async () => {
+    h = await startHarness();
+    P = await h.device();
+    lidl = await newList(P, "Lidl");
+    await addItems(P, lidl, "Milk");
+    await P.click(`${row("Milk")} [data-act="edit"]`);
+  });
+  after(() => h.close());
+
+  const q = () => P.inputValue("#f-q");
+  const down = '.qty [data-act="q-down"]';
+  const up = '.qty [data-act="q-up"]';
+
+  it("start from 1 and step the number, keeping the unit", async () => {
+    assert.equal(await P.isDisabled(down), true);
+    await P.click(up);
+    assert.equal(await q(), "1");
+    await P.click(up);
+    await P.fill("#f-q", `${await q()} l`);
+    await P.click(up);
+    assert.equal(await q(), "3 l");
+    await P.click(down);
+    await P.click(down);
+    assert.equal(await q(), "1 l");
+    assert.equal(await P.isDisabled(down), true, "never leaves the unit alone");
+  });
+
+  it("hide for a quantity they can't step", async () => {
+    await P.fill("#f-q", "1,5 l");
+    assert.equal(await P.isVisible(up), false);
+    await P.fill("#f-q", "2 l");
+    assert.equal(await P.isVisible(up), true);
+  });
+
+  it("are saved with Done", async () => {
+    await P.click(up);
+    await P.click('[data-act="sheet-done"]');
+    assert.deepEqual(await shown(P, lidl), ["Milk 3 l"]);
+  });
+
+  it("had no script errors", () => assert.deepEqual(h.errors, []));
+});

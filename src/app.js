@@ -7,6 +7,7 @@ import { OtherAppError } from "../vendor/lokki-sync/engine.js";
 import { backupText, parseBackup, planRestore } from "./core/backup.js";
 import { createClock } from "./core/clock.js";
 import * as L from "./core/lists.js";
+import { canStep, stepQuantity } from "./core/quantity.js";
 import { EDITABLE, edit, isLive, state } from "./core/records.js";
 import { BUILD, sourceUrl } from "./core/version.js";
 import { zipOne } from "./core/zip.js";
@@ -463,8 +464,8 @@ function renderSheet() {
     const title = addback ? "Add back" : state(i) === "hidden" ? "Removed item" : "Item";
     body = `<h2 id="sheet-title">${title}</h2>
         <label class="field">Name<input id="f-name" value="${esc(i.name)}"></label>
-        <div class="two"><label class="field">Quantity<input id="f-q" value="${esc(i.q || "")}"></label>
-        <label class="field">List<select id="f-list">${listOptions(lk, i)}</select></label></div>
+        <div class="field"><label for="f-q">Quantity</label><div class="qty"><input id="f-q" value="${esc(i.q || "")}">${qtyButtons(i.q)}</div></div>
+        <label class="field">List<span class="select"><select id="f-list">${listOptions(lk, i)}</select></span></label>
         <label class="field">Note<input id="f-note" value="${esc(i.note || "")}"></label>`;
     if (addback)
       body += `<button class="primary" data-act="addback-confirm" id="addback-btn">${addBackLabel(lk)}</button><button class="quiet" data-act="close-sheet">Cancel</button>`;
@@ -605,6 +606,19 @@ function renderSheet() {
     keep || $("#f-lname") || $("#f-url") || $("#p0") || $("#p1") || (sheet.type === "item" ? null : $(".sheet button"));
   if (first) first.focus();
   placeToast();
+}
+
+// − and + at the right end of the quantity, where the thumb reaches (src/core/quantity.js)
+function qtyButtons(q) {
+  const show = canStep(q) ? "" : " hidden";
+  const off = stepQuantity(q, -1) === null ? " disabled" : "";
+  return `<button type="button" class="step" data-act="q-down" aria-label="Less"${show}${off}>${svg("minus", 20)}</button><button type="button" class="step" data-act="q-up" aria-label="More"${show}>${svg("plus", 20)}</button>`;
+}
+function syncQtyButtons() {
+  const q = $("#f-q")?.value;
+  for (const b of $$(".qty .step")) b.hidden = !canStep(q);
+  const down = $('.qty [data-act="q-down"]');
+  if (down) down.disabled = stepQuantity(q, -1) === null;
 }
 
 function readItemFields(i) {
@@ -851,6 +865,14 @@ document.addEventListener(
           promptInstall().then(render);
         } else openSheet({ type: "install" });
         break;
+      case "q-up":
+      case "q-down": {
+        const inp = $("#f-q");
+        const next = stepQuantity(inp.value, act === "q-up" ? 1 : -1);
+        if (next !== null) inp.value = next;
+        syncQtyButtons();
+        break;
+      }
       case "install-steps":
         openSheet({ type: "install" });
         break;
@@ -1123,6 +1145,7 @@ document.addEventListener("submit", (e) => {
 
 document.addEventListener("input", (e) => {
   if (e.target.id === "add-input") updateSugg();
+  if (e.target.id === "f-q") syncQtyButtons();
   if (e.target.id === "p1" && $("#meter")) {
     const n = strength(e.target.value);
     $$("#meter span").forEach((s, k) => {
