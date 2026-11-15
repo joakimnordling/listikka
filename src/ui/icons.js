@@ -22,6 +22,7 @@ export const ICON_NAMES = {
   server: "server",
   refresh: "refresh-cw",
   scan: "scan-line",
+  minus: "minus",
   home: "square-plus",
   share: "share",
   download: "download",

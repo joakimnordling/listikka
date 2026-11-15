@@ -26,6 +26,8 @@ export const NAMES = [
   "broom-sparkles",
   "undo-2",
   "trash-2",
+  // quantity steps
+  "minus",
   // installing
   "square-plus",
   "share",
