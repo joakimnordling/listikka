@@ -1,11 +1,12 @@
 // Builds the site (GitHub Pages) into dist/site: the modules bundled into one script and the stylesheet, both with
 // content hashes in their names, the files from public/, the Jost font, the QR scanner, a service worker for offline
-// use, and the CNAME for the custom domain.
+// use, the CNAME for the custom domain, and version.json for the app's update check.
 //   npm run build
 import { createHash } from "node:crypto";
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { build } from "esbuild";
+import { buildDefine, buildInfo } from "./build-info.js";
 
 const root = resolve(import.meta.dirname, "..");
 const out = join(root, "dist", "site");
@@ -50,6 +51,7 @@ export async function buildSite() {
       target: "es2022",
       minify: true,
       legalComments: "inline",
+      define: await buildDefine(),
       write: false,
     })
   ).outputFiles[0].text;
@@ -87,6 +89,8 @@ export async function buildSite() {
     .replace("__VERSION__", version)
     .replace("__FILES__", JSON.stringify(cached));
   await writeFile(join(out, "sw.js"), sw);
+  // Not cached offline: the app fetches it to see whether a newer version is out (src/ui/update.js)
+  await writeFile(join(out, "version.json"), `${JSON.stringify(await buildInfo())}\n`);
   return { out, version, files: cached.length };
 }
 
