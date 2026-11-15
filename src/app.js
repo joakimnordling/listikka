@@ -7,11 +7,13 @@ import { OtherAppError } from "../vendor/lokki-sync/engine.js";
 import { createClock } from "./core/clock.js";
 import * as L from "./core/lists.js";
 import { EDITABLE, edit, isLive, state } from "./core/records.js";
+import { BUILD, sourceUrl } from "./core/version.js";
 import { createIdb } from "./data/idb.js";
 import { createStore } from "./data/store.js";
 import { createSync, OTHER_APP } from "./sync/manager.js";
 import { svg } from "./ui/icons.js";
 import { canScan, scanPairing } from "./ui/scan.js";
+import { checkForUpdate, watchForUpdates } from "./ui/update.js";
 
 const esc = (s) =>
   String(s ?? "").replace(
@@ -266,7 +268,9 @@ function renderSettings() {
       <h2>Lists</h2>
       <button class="nav-row" data-act="removed-lists">${svg("broom")}Removed lists<span class="count">${n}</span>${svg("chevRight", 18)}</button>
       <h2>About</h2>
-      <p class="text">Listikka, lists for shopping and more. <a href="https://github.com/joakimnordling/listikka" style="color: inherit">Source code</a>.</p>
+      <p class="text">Listikka, lists for shopping and more.</p>
+      <p class="text dim" id="version">Version ${esc(BUILD.version)}${BUILD.commit ? ` · ${esc(BUILD.commit.slice(0, 7))}` : ""}${BUILD.built ? ` · built ${esc(BUILD.built)}` : ""} · <a href="${esc(sourceUrl())}" target="_blank" rel="noopener" style="color: inherit">Source on GitHub</a></p>
+      <button class="nav-row" data-act="check-update">${svg("refresh")}Check for updates<span class="count">Also checked by itself</span></button>
     </div></div>`;
 }
 
@@ -888,6 +892,9 @@ document.addEventListener(
       case "sync-now":
         sync.now();
         break;
+      case "check-update":
+        checkForUpdate({ asked: true, say: toast });
+        break;
       case "change-pass":
         openSheet({ type: "change-pass" });
         break;
@@ -1341,3 +1348,4 @@ await sync.load();
 loaded = true;
 render();
 sync.start();
+watchForUpdates();
