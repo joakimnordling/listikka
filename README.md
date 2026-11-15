@@ -1,10 +1,11 @@
 # Listikka
 
-A shared shopping list. Lists hold items, every field of an item merges on its own, and removed items stay
-remembered as suggestions until deleted permanently. It syncs end-to-end encrypted through a server you choose,
-using the same sync protocol and server as [Lokki](https://github.com/joakimnordling/lokki).
+Lists for shopping and more. Lists hold items, and removed items stay remembered as suggestions until deleted
+permanently. Everything is kept on the device; it can also sync between devices through a
+[Lokki](https://github.com/joakimnordling/lokki) sync server, where every field of an item merges on its own.
 
-Work in progress: this repository holds the core so far.
+It runs in the browser at [listikka.jocke.fi](https://listikka.jocke.fi), works offline, and can be added to a phone's
+home screen.
 
 ## Core
 
@@ -33,6 +34,15 @@ dependencies match `package.json`. `src/sync/app.js` holds Listikka's settings f
 `list` and `item`, and the field-by-field merge. `src/sync/device.js` is the engine's device over the store, and `src/sync/manager.js`
 the shared manager with Listikka's settings.
 
+## Screens
+
+`src/app.js` draws the app from the stored records and changes them only through the core's list actions, so every
+change gets its timestamps and merges with other devices' changes. Which lists are open, which hide ticked items,
+drafts and the theme are each device's own, kept in localStorage. `public/` holds the page, the stylesheet, the
+manifest and the app icons; `npm run app-icons` redraws the PNG icons from `public/icons/listikka-icon.svg`. The
+icons inside the app come from Lucide: `scripts/build-icons.js` lists the ones in use, and `npm run icons` regenerates
+`src/ui/lucide.js` from the `lucide-static` package; a test fails when it's out of date.
+
 ## Development
 
 Needs Node 22 or later.
@@ -41,7 +51,17 @@ Needs Node 22 or later.
 npm install
 npm test
 npm run lint
+npm run build        # the site in dist/site
+npm run serve        # dist/site on http://localhost:8080
 ```
+
+Syncing needs a [Lokki sync server](https://github.com/joakimnordling/lokki/tree/main/servers/python) that lists the
+app's origin in `LOKKI_CORS_ORIGINS`, for example `["https://listikka.jocke.fi"]`.
+
+## Deploying
+
+Every push to `main` builds the site and publishes it on GitHub Pages (`.github/workflows/pages.yml`), at
+listikka.jocke.fi (`CNAME`, written by the build).
 
 ## Licence
 

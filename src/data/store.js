@@ -53,8 +53,9 @@ export function createStore(db) {
         ops.push([STORE_OF[v.kind], "put", { ...next, sb: 0 }]);
         out.push(next);
       }
-      await db.write(ops);
+      // The screen updates at once; the database write follows in the same call
       if (out.length) this.changed();
+      await db.write(ops);
       return out;
     },
     /** Records as they came from a sync: stored with exactly these bits. */

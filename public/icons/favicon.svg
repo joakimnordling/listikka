@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Listikka</title>
+  <rect width="512" height="512" fill="#2c2f86"/>
+  <g transform="translate(36 52) scale(4)">
+    <path d="M60 24 C 62 18, 66 13, 70 10" fill="none" stroke="#5f9f62" stroke-width="3" stroke-linecap="round"/>
+    <path d="M62 20 C 70 4, 88 4, 92 12 C 94 22, 74 28, 62 20 Z" fill="#5f9f62"/>
+    <circle cx="48" cy="58" r="36" fill="#5d61d0"/>
+    <ellipse cx="34" cy="44" rx="12" ry="7" transform="rotate(-35 34 44)" fill="#7b96d4" opacity="0.5"/>
+    <path d="M31 59 L44 72 L68 46" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
