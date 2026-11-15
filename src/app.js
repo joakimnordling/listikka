@@ -465,7 +465,7 @@ function renderSheet() {
     body = `<h2 id="sheet-title">${title}</h2>
         <label class="field">Name<input id="f-name" value="${esc(i.name)}"></label>
         <div class="field"><label for="f-q">Quantity</label><div class="qty"><input id="f-q" value="${esc(i.q || "")}">${qtyButtons(i.q)}</div></div>
-        <label class="field">List<select id="f-list">${listOptions(lk, i)}</select></label>
+        <label class="field">List<span class="select"><select id="f-list">${listOptions(lk, i)}</select></span></label>
         <label class="field">Note<input id="f-note" value="${esc(i.note || "")}"></label>`;
     if (addback)
       body += `<button class="primary" data-act="addback-confirm" id="addback-btn">${addBackLabel(lk)}</button><button class="quiet" data-act="close-sheet">Cancel</button>`;

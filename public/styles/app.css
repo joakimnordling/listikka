@@ -878,6 +878,35 @@ svg {
   min-width: 0;
   width: 100%;
 }
+/* a select with its own chevron, as far from the right edge as the text is from the left; browsers place theirs
+   differently, some very close to the edge */
+.select {
+  position: relative;
+  display: block;
+}
+.field .select select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 44px;
+}
+.select::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  width: 18px;
+  height: 18px;
+  margin-top: -9px;
+  background: var(--ink);
+  pointer-events: none;
+  -webkit-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
 /* the quantity, with − and + at its right end */
 .qty {
   display: flex;
