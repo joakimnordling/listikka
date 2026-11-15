@@ -958,8 +958,15 @@ svg {
   color: var(--toast-fg);
   font-size: 15px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  animation: up 0.2s ease-out;
+  /* its own slide-in, as up's transform would drop the centring translateX(-50%) */
+  animation: toast-up 0.2s ease-out;
   transition: bottom 0.2s ease-out;
+}
+@keyframes toast-up {
+  from {
+    transform: translate(-50%, 40px);
+    opacity: 0;
+  }
 }
 .toast button {
   min-height: 36px;
