@@ -84,6 +84,6 @@ app's origin in `LOKKI_CORS_ORIGINS`, for example `["https://listikka.jocke.fi"]
 Every push to `main` builds the site and publishes it on GitHub Pages (`.github/workflows/pages.yml`), at
 listikka.jocke.fi (`CNAME`, written by the build).
 
-## Licence
+## License
 
-MIT. See `THIRD_PARTY_NOTICES.md` for what Listikka uses from others.
+[MIT](LICENSE). Third-party material is listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
