@@ -13,6 +13,7 @@
     "app-icons": "node scripts/build-app-icons.js",
     "build": "node scripts/build-site.js",
     "serve": "node scripts/serve.js",
+    "screenshots": "node scripts/screenshots.js",
     "test": "node --test \"tests/unit/**/*.test.js\"",
     "lint": "biome check .",
     "test:e2e": "node scripts/build-site.js && node --test --test-concurrency=1 \"tests/e2e/**/*.test.js\"",
