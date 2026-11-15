@@ -26,6 +26,7 @@
     "@napi-rs/image": "1.16.0",
     "esbuild": "0.28.2",
     "lucide-static": "1.68.0",
-    "playwright": "1.63.0"
+    "playwright": "1.63.0",
+    "qr-scanner": "1.4.2"
   }
 }

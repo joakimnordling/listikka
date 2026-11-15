@@ -29,6 +29,7 @@ export const NAMES = [
   // sync
   "server",
   "refresh-cw",
+  "scan-line",
 ];
 
 const pkg = join(root, "node_modules", "lucide-static");

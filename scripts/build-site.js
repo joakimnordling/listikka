@@ -1,6 +1,6 @@
 // Builds the site (GitHub Pages) into dist/site: the modules bundled into one script and the stylesheet, both with
-// content hashes in their names, the files from public/, the Jost font, a service worker for offline use, and the
-// CNAME for the custom domain.
+// content hashes in their names, the files from public/, the Jost font, the QR scanner, a service worker for offline
+// use, and the CNAME for the custom domain.
 //   npm run build
 import { createHash } from "node:crypto";
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -12,6 +12,12 @@ const out = join(root, "dist", "site");
 export const DOMAIN = "listikka.jocke.fi";
 const hash = (b) => createHash("sha256").update(b).digest("hex").slice(0, 10);
 const FONTS = ["jost-latin-wght-normal.woff2", "jost-latin-ext-wght-normal.woff2"];
+// The QR scanner, loaded only when scanning (src/ui/scan.js): [file in node_modules/qr-scanner, file in vendor/]
+export const QR_SCANNER = [
+  ["qr-scanner.min.js", "qr-scanner.min.js"],
+  ["qr-scanner-worker.min.js", "qr-scanner-worker.min.js"],
+  ["LICENSE", "qr-scanner-LICENSE.txt"],
+];
 
 async function files(dir) {
   const list = [];
@@ -67,9 +73,14 @@ export async function buildSite() {
   );
   await writeFile(join(out, "index.html"), html);
   await writeFile(join(out, "CNAME"), `${DOMAIN}\n`);
+  await mkdir(join(out, "vendor"), { recursive: true });
+  for (const [from, to] of QR_SCANNER) {
+    const text = await readFile(join(root, "node_modules", "qr-scanner", from), "utf8");
+    await writeFile(join(out, "vendor", to), text.replace(/\n\/\/# sourceMappingURL=.*\n?$/, "\n"));
+  }
 
   const cached = ["./", ...(await files(out)).map((f) => relative(out, f).split("\\").join("/"))].filter(
-    (f) => !/^(CNAME|index\.html|fonts\/OFL\.txt|icons\/listikka-icon\.svg)$/.test(f),
+    (f) => !/^(CNAME|index\.html|fonts\/OFL\.txt|vendor\/qr-scanner-LICENSE\.txt|icons\/listikka-icon\.svg)$/.test(f),
   );
   const version = hash(html + cached.join("\n") + js + css);
   const sw = (await readFile(join(root, "scripts", "sw-template.js"), "utf8"))
