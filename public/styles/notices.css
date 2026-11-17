@@ -1,0 +1,124 @@
+/* Notices: a newer version, and putting Listikka on the Home Screen. */
+/* A newer version is out (src/ui/update.js) */
+.update {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  /* under sheets and their scrim, so it never covers what a sheet offers */
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 448px;
+  margin-inline: auto;
+  padding: 8px 8px 8px 16px;
+  border-radius: 12px;
+  background: var(--toast);
+  color: var(--toast-fg);
+  font-size: 15px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.update span {
+  flex: 1;
+}
+.update button {
+  min-height: 36px;
+  padding: 0 10px;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  color: var(--toast-accent);
+}
+.update .go {
+  font-weight: 600;
+}
+.update .x {
+  color: var(--toast-fg);
+  opacity: 0.7;
+}
+
+/* Putting Listikka on the Home Screen: the card at the bottom of the lists, and the steps sheet */
+.install-hint {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 16px;
+  padding: 14px 44px 12px 14px;
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.45;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+.install-hint > svg {
+  flex: none;
+  margin-top: 2px;
+}
+.install-hint b {
+  display: block;
+  margin-bottom: 2px;
+}
+.install-hint span {
+  display: block;
+  color: var(--dim);
+}
+.install-hint .link {
+  margin: 6px 0 0 -8px;
+  padding: 6px 8px;
+  background: none;
+  border: 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.install-hint .x {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 0;
+  color: var(--dim);
+}
+.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  counter-reset: step;
+}
+.steps li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 16px;
+  line-height: 1.45;
+  counter-increment: step;
+}
+.steps li::before {
+  content: counter(step);
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  background: var(--btn);
+  color: var(--btn-fg);
+  font-size: 14px;
+  font-weight: 600;
+}
+.steps .ic {
+  display: inline-flex;
+  vertical-align: -3px;
+}

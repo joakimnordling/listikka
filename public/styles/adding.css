@@ -1,0 +1,133 @@
+/* The add field, its suggestions, and what sits under the lists: the hidden-items note, New list and the hint. */
+.add-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px 0 22px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--dim);
+  font-size: 16px;
+  text-align: left;
+}
+.add-row em {
+  color: var(--ink);
+  font-style: italic;
+}
+.add-row .tag {
+  margin-left: auto;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.add {
+  border-bottom: 1px solid var(--line);
+}
+.add-field {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 54px;
+  padding: 0 12px 0 22px;
+  color: var(--dim);
+}
+.add-field input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 2px;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid var(--accent);
+  border-radius: 0;
+  color: var(--ink);
+  font-size: 17px;
+  outline: none;
+}
+.sugg {
+  display: flex;
+  flex-direction: column;
+}
+.sg {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 48px;
+  padding: 0 16px 0 22px;
+  background: var(--title);
+  border: 0;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 16px;
+  text-align: left;
+}
+.sg .q {
+  color: var(--dim);
+  font-size: 14px;
+}
+.sg .from {
+  margin-left: auto;
+  color: var(--dim);
+  font-size: 13px;
+  white-space: nowrap;
+}
+/* reads as a button: the same pill as Add, outlined */
+.sg-act {
+  flex: none;
+  margin-left: auto;
+  padding: 5px 12px;
+  border: 1.5px solid var(--btn);
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sg .from + .sg-act {
+  margin-left: 0;
+}
+/* the item of the name being typed, already in the list */
+.item.match > .row {
+  background: var(--title);
+  box-shadow: inset 4px 0 0 var(--btn);
+}
+.add-btn {
+  flex: none;
+  height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--btn);
+  color: var(--btn-fg);
+  font-size: 15px;
+  font-weight: 600;
+}
+.hidden-note {
+  padding: 8px 16px 8px 56px;
+  border-bottom: 1px solid var(--line);
+  color: var(--dim);
+  font-size: 14px;
+}
+
+.new-list {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  margin: 8px 16px 0;
+  background: none;
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  color: var(--dim);
+  font-size: 15px;
+}
+.hint {
+  margin: 12px 24px 0;
+  color: var(--dim);
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: center;
+}
