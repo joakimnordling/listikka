@@ -279,3 +279,32 @@ describe("the quantity's − and +", () => {
 
   it("had no script errors", () => assert.deepEqual(h.errors, []));
 });
+
+describe("names and notes with markup in them", () => {
+  let h, P, list;
+  const evil = "<img src=x onerror=window.__pwned=1>";
+  before(async () => {
+    h = await startHarness();
+    P = await h.device();
+    list = await newList(P, `Shop ${evil}`);
+    await addItems(P, list, `Milk ${evil}`);
+  });
+  after(() => h.close());
+
+  it("show as text everywhere and never run", async () => {
+    assert.equal(await P.textContent(`section[data-list="${list}"] .lname`), `Shop ${evil}`);
+    assert.deepEqual(await shown(P, list), [`Milk ${evil}`]);
+    await P.click(`li.item [data-act="edit"]`);
+    assert.equal(await P.inputValue("#f-name"), `Milk ${evil}`);
+    await P.fill("#f-note", evil);
+    await P.click('[data-act="sheet-done"]');
+    assert.equal(await P.textContent("li.item .note"), evil);
+    await P.click(`section[data-list="${list}"] [data-act="menu"]`);
+    assert.equal(await P.textContent("#sheet-title"), `Shop ${evil}`);
+    await P.click('[data-act="close-sheet"]');
+    assert.equal(await P.$$eval("#app img, #overlay img", (els) => els.length), 0);
+    assert.equal(await P.evaluate(() => window.__pwned), undefined);
+  });
+
+  it("had no script errors", () => assert.deepEqual(h.errors, []));
+});

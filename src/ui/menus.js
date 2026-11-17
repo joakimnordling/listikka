@@ -2,7 +2,7 @@
 
 import * as L from "../core/lists.js";
 import { state } from "../core/records.js";
-import { $, esc } from "./dom.js";
+import { $, html } from "./dom.js";
 import { svg } from "./icons.js";
 import { installWay, promptInstall } from "./install.js";
 import { onActs, sheetBodies } from "./registry.js";
@@ -111,51 +111,53 @@ onActs({
 
 sheetBodies({
   menu: () => {
-    let body = "";
     const key = S.sheet.key;
     const l = key ? getList(key) : null;
     const items = itemsIn(key);
     const nDone = items.filter((i) => state(i) === "done").length;
     const nHidden = items.filter((i) => state(i) === "hidden").length;
-    let m = "";
-    if (nDone) m += `<button data-act="m-remove-ticked">${svg("broomSparkles")}Remove ticked (${nDone})</button>`;
-    if (inRemoved(key)) m += `<button data-act="m-hide-removed">${svg("eyeOff")}Hide removed items</button>`;
-    else if (nHidden) m += `<button data-act="m-show-removed">${svg("broom")}Show removed items (${nHidden})</button>`;
-    if (l) m += `<button data-act="m-rename">${svg("pencil")}Rename</button>`;
-    m += `<button data-act="new-list">${svg("plus")}New list</button>`;
-    if (l) m += `<button class="warn" data-act="m-remove-list">${svg("broom")}Remove list</button>`;
-    body = `<h2 id="sheet-title">${l ? esc(l.name) : "Items without a list"}</h2><div class="menu">${m}</div><button class="primary" data-act="close-sheet">Cancel</button>`;
-    return body;
+    const m = [];
+    if (nDone)
+      m.push(html`<button data-act="m-remove-ticked">${svg("broomSparkles")}Remove ticked (${nDone})</button>`);
+    if (inRemoved(key)) m.push(html`<button data-act="m-hide-removed">${svg("eyeOff")}Hide removed items</button>`);
+    else if (nHidden)
+      m.push(html`<button data-act="m-show-removed">${svg("broom")}Show removed items (${nHidden})</button>`);
+    if (l) m.push(html`<button data-act="m-rename">${svg("pencil")}Rename</button>`);
+    m.push(html`<button data-act="new-list">${svg("plus")}New list</button>`);
+    if (l) m.push(html`<button class="warn" data-act="m-remove-list">${svg("broom")}Remove list</button>`);
+    return html`<h2 id="sheet-title">${l ? l.name : "Items without a list"}</h2><div class="menu">${m}</div><button class="primary" data-act="close-sheet">Cancel</button>`;
   },
   appmenu: () => {
-    let body = "";
     const anyOpen = allKeys().some(isOpen);
-    let m = `<button data-act="new-list">${svg("plus")}New list</button>`;
-    m += anyOpen
-      ? `<button data-act="a-collapse">${svg("chevRight")}Collapse all</button>`
-      : `<button data-act="a-expand">${svg("chevDown")}Expand all</button>`;
+    const m = [html`<button data-act="new-list">${svg("plus")}New list</button>`];
+    m.push(
+      anyOpen
+        ? html`<button data-act="a-collapse">${svg("chevRight")}Collapse all</button>`
+        : html`<button data-act="a-expand">${svg("chevDown")}Expand all</button>`,
+    );
     const anyShown = allKeys().some((k) => !ui.hide[k]);
-    m += anyShown
-      ? `<button data-act="a-hide-ticked">${svg("eyeOff")}Hide ticked items</button>`
-      : `<button data-act="a-show-ticked">${svg("eye")}Show ticked items</button>`;
-    m += S.removedAll
-      ? `<button data-act="a-hide-removed">${svg("eyeOff")}Hide removed items</button>`
-      : `<button data-act="a-show-removed">${svg("broom")}Show removed items</button>`;
-    if (installWay()) m += `<button data-act="install">${svg("home")}Add to Home Screen</button>`;
-    m += `<button data-act="a-settings">${svg("cog")}Settings${syncDot()}</button>`;
-    body = `<h2 id="sheet-title">Listikka</h2><div class="menu">${m}</div><button class="primary" data-act="close-sheet">Cancel</button>`;
-    return body;
+    m.push(
+      anyShown
+        ? html`<button data-act="a-hide-ticked">${svg("eyeOff")}Hide ticked items</button>`
+        : html`<button data-act="a-show-ticked">${svg("eye")}Show ticked items</button>`,
+    );
+    m.push(
+      S.removedAll
+        ? html`<button data-act="a-hide-removed">${svg("eyeOff")}Hide removed items</button>`
+        : html`<button data-act="a-show-removed">${svg("broom")}Show removed items</button>`,
+    );
+    if (installWay()) m.push(html`<button data-act="install">${svg("home")}Add to Home Screen</button>`);
+    m.push(html`<button data-act="a-settings">${svg("cog")}Settings${syncDot()}</button>`);
+    return html`<h2 id="sheet-title">Listikka</h2><div class="menu">${m}</div><button class="primary" data-act="close-sheet">Cancel</button>`;
   },
   name: () => {
-    let body = "";
     const l = S.sheet.id ? getList(S.sheet.id) : null;
-    body = `<h2 id="sheet-title">${l ? "Rename list" : "New list"}</h2>
-        <form id="name-form" autocomplete="off" style="display: contents"><label class="field">Name<input id="f-lname" value="${esc(l ? l.name : "")}" placeholder="Shop or occasion"></label>
+    return html`<h2 id="sheet-title">${l ? "Rename list" : "New list"}</h2>
+        <form id="name-form" autocomplete="off" style="display: contents"><label class="field">Name<input id="f-lname" value="${l ? l.name : ""}" placeholder="Shop or occasion"></label>
         <button class="primary" type="submit">${l ? "Save" : "Create list"}</button></form>`;
-    return body;
   },
   install: () => {
-    return `<h2 id="sheet-title">Add to Home Screen</h2>
+    return html`<h2 id="sheet-title">Add to Home Screen</h2>
         <p>Listikka then opens from its own icon, full screen like an app, and works offline.</p>
         <ol class="steps">
           <li><span>In Safari, tap <b>Share</b> <span class="ic">${svg("share", 16)}</span>. It's in the menu next to the address, or in the toolbar on older iOS versions.</span></li>

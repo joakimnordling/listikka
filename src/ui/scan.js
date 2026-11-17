@@ -1,7 +1,9 @@
 // Scanning a server's QR code with the camera (vendor/lokki-sync/pairing.js). The scanner, qr-scanner (MIT), is loaded
 // only when needed, from vendor/ next to the app: it's not part of the app's script.
+
 import { parsePairing } from "../../vendor/lokki-sync/pairing.js";
 import { LISTIKKA } from "../sync/app.js";
+import { html } from "./dom.js";
 
 export const canScan = () => !!navigator.mediaDevices?.getUserMedia;
 
@@ -22,7 +24,7 @@ export async function scanPairing(say) {
   box.className = "scan";
   box.setAttribute("role", "dialog");
   box.setAttribute("aria-label", "Scan QR code");
-  box.innerHTML = `<video playsinline muted></video><div class="frame"></div>
+  box.innerHTML = html`<video playsinline muted></video><div class="frame"></div>
     <p>Point the camera at the code from <span class="mono">lokki-server token add … --qr --app listikka</span></p>
     <button type="button" class="quiet" id="scan-cancel">Cancel</button>`;
   document.body.appendChild(box);

@@ -2,7 +2,7 @@
 
 import * as L from "../core/lists.js";
 import { state } from "../core/records.js";
-import { $, $$, esc } from "./dom.js";
+import { $, $$, html } from "./dom.js";
 import { svg } from "./icons.js";
 import { tickItem } from "./lists.js";
 import { render } from "./render.js";
@@ -300,7 +300,7 @@ function beginReorder(k, y, pid) {
   const app = $("#app").getBoundingClientRect();
   const gh = document.createElement("div");
   gh.className = "rghost";
-  gh.innerHTML = `${svg("chevRight")}<span class="lname">${esc(getList(k).name)}</span>`;
+  gh.innerHTML = html`${svg("chevRight")}<span class="lname">${getList(k).name}</span>`;
   Object.assign(gh.style, { left: `${app.left + 6}px`, width: `${app.width - 12}px`, top: `${y - 26}px` });
   document.body.appendChild(gh);
   S.reorder = { id: k, wrap, held, ghost: gh, y };

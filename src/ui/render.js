@@ -1,7 +1,7 @@
 // Drawing the current view; the sheet and the toast have their own hosts and are drawn by sheets.js and toast.js.
 
 import { updateSugg } from "./adding.js";
-import { $ } from "./dom.js";
+import { $, html } from "./dom.js";
 import { renderMain } from "./lists.js";
 import { renderRemovedLists, renderSettings } from "./settings.js";
 import { S, savePrefs, sync } from "./state.js";
@@ -12,7 +12,8 @@ export function render() {
   const sc = $("#scroll");
   const top = sc && sc.dataset.view === S.view ? sc.scrollTop : 0;
   const app = $("#app");
-  if (!S.loaded) app.innerHTML = `<header class="top"><h1>Listikka</h1></header><div class="loading">Loading…</div>`;
+  if (!S.loaded)
+    app.innerHTML = html`<header class="top"><h1>Listikka</h1></header><div class="loading">Loading…</div>`;
   else if (S.view === "main") app.innerHTML = renderMain();
   else if (S.view === "settings") app.innerHTML = renderSettings();
   else app.innerHTML = renderRemovedLists();
@@ -36,5 +37,5 @@ export function render() {
 
 export function syncDot() {
   const s = sync.headerState();
-  return s ? `<span class="dot${s === "bad" ? " bad" : ""}" aria-hidden="true"></span>` : "";
+  return s ? html`<span class="dot${s === "bad" ? " bad" : ""}" aria-hidden="true"></span>` : "";
 }

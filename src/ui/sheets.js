@@ -3,7 +3,7 @@
 import * as L from "../core/lists.js";
 import { canStep, stepQuantity } from "../core/quantity.js";
 import { isLive, state } from "../core/records.js";
-import { $, $$, esc } from "./dom.js";
+import { $, $$, html } from "./dom.js";
 import { svg } from "./icons.js";
 import { onActs, sheetBodies, sheetBody } from "./registry.js";
 import { render } from "./render.js";
@@ -32,10 +32,10 @@ function listOptions(selected, item) {
   const opts = [["", "No list"], ...activeLists().map((l) => [l.id, l.name])];
   const cur = item?.list && getList(item.list);
   if (cur && isLive(cur) && state(cur) === "hidden") opts.push([cur.id, `${cur.name} (removed)`]);
-  return opts.map(([v, n]) => `<option value="${v}"${v === selected ? " selected" : ""}>${esc(n)}</option>`).join("");
+  return opts.map(([v, n]) => html`<option value="${v}"${v === selected ? " selected" : ""}>${n}</option>`);
 }
 
-const addBackLabel = (key) => (key ? `Add to ${esc(listName(key))}` : "Add back");
+const addBackLabel = (key) => (key ? `Add to ${listName(key)}` : "Add back");
 
 export function renderSheet() {
   const host = $("#overlay");
@@ -43,14 +43,14 @@ export function renderSheet() {
     host.innerHTML = "";
     return;
   }
-  const err = `<p class="err" role="alert"${S.sheet.error ? "" : " hidden"}>${esc(S.sheet.error || "")}</p>`;
+  const err = html`<p class="err" role="alert"${S.sheet.error ? "" : " hidden"}>${S.sheet.error || ""}</p>`;
   const body = sheetBody(S.sheet.type, err);
   if (body === null) {
     closeSheet();
     return;
   }
   const focused = document.activeElement?.id;
-  host.innerHTML = `<div class="scrim" data-act="scrim"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="grab"></div>${body}</div>`;
+  host.innerHTML = html`<div class="scrim" data-act="scrim"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="grab"></div>${body}</div>`;
   const keep = focused && $(`#${focused}`, host);
   const first =
     keep ||
@@ -67,7 +67,7 @@ export function renderSheet() {
 function qtyButtons(q) {
   const show = canStep(q) ? "" : " hidden";
   const off = stepQuantity(q, -1) === null ? " disabled" : "";
-  return `<button type="button" class="step" data-act="q-down" aria-label="Less"${show}${off}>${svg("minus", 20)}</button><button type="button" class="step" data-act="q-up" aria-label="More"${show}>${svg("plus", 20)}</button>`;
+  return html`<button type="button" class="step" data-act="q-down" aria-label="Less"${show}${off}>${svg("minus", 20)}</button><button type="button" class="step" data-act="q-up" aria-label="More"${show}>${svg("plus", 20)}</button>`;
 }
 function syncQtyButtons() {
   const q = $("#f-q")?.value;
@@ -148,38 +148,28 @@ onActs({
 
 sheetBodies({
   item: () => {
-    let body = "";
     const i = getItem(S.sheet.id);
-    if (!i || !isLive(i)) {
-      closeSheet();
-      return;
-    }
+    if (!i || !isLive(i)) return null;
     const addback = S.sheet.mode === "addback";
     const lk = addback ? S.sheet.key : listOf(i);
     const title = addback ? "Add back" : state(i) === "hidden" ? "Removed item" : "Item";
-    body = `<h2 id="sheet-title">${title}</h2>
-        <label class="field">Name<input id="f-name" value="${esc(i.name)}"></label>
-        <div class="field"><label for="f-q">Quantity</label><div class="qty"><input id="f-q" value="${esc(i.q || "")}">${qtyButtons(i.q)}</div></div>
+    const buttons = addback
+      ? html`<button class="primary" data-act="addback-confirm" id="addback-btn">${addBackLabel(lk)}</button><button class="quiet" data-act="close-sheet">Cancel</button>`
+      : html`${state(i) !== "hidden" ? html`<button class="quiet" data-act="sheet-remove">${svg("broom", 18)}Remove from list</button>` : ""}<button class="primary" data-act="sheet-done">Done</button>`;
+    return html`<h2 id="sheet-title">${title}</h2>
+        <label class="field">Name<input id="f-name" value="${i.name}"></label>
+        <div class="field"><label for="f-q">Quantity</label><div class="qty"><input id="f-q" value="${i.q || ""}">${qtyButtons(i.q)}</div></div>
         <label class="field">List<span class="select"><select id="f-list">${listOptions(lk, i)}</select></span></label>
-        <label class="field">Note<input id="f-note" value="${esc(i.note || "")}"></label>`;
-    if (addback)
-      body += `<button class="primary" data-act="addback-confirm" id="addback-btn">${addBackLabel(lk)}</button><button class="quiet" data-act="close-sheet">Cancel</button>`;
-    else
-      body += `${state(i) !== "hidden" ? `<button class="quiet" data-act="sheet-remove">${svg("broom", 18)}Remove from list</button>` : ""}<button class="primary" data-act="sheet-done">Done</button>`;
-    return body;
+        <label class="field">Note<input id="f-note" value="${i.note || ""}"></label>${buttons}`;
   },
   confirm: (err) => {
-    let body = "";
-    body = `<h2 id="sheet-title">${esc(S.sheet.title)}</h2><p>${esc(S.sheet.body)}</p>${err}
-        <button class="danger" data-act="confirm-yes">${svg(S.sheet.icon || "trash", 18)}${esc(S.sheet.yes || "Delete permanently")}</button>
+    return html`<h2 id="sheet-title">${S.sheet.title}</h2><p>${S.sheet.body}</p>${err}
+        <button class="danger" data-act="confirm-yes">${svg(S.sheet.icon || "trash", 18)}${S.sheet.yes || "Delete permanently"}</button>
         <button class="primary" data-act="close-sheet">Cancel</button>`;
-    return body;
   },
   notice: () => {
-    let body = "";
-    body = `<h2 id="sheet-title">${esc(S.sheet.title)}</h2><p>${esc(S.sheet.body)}</p>
+    return html`<h2 id="sheet-title">${S.sheet.title}</h2><p>${S.sheet.body}</p>
         <button class="primary" data-act="close-sheet">Close</button>`;
-    return body;
   },
 });
 
@@ -188,7 +178,7 @@ document.addEventListener("input", (e) => {
 });
 document.addEventListener("change", (e) => {
   if (e.target.id === "f-list" && S.sheet?.mode === "addback")
-    $("#addback-btn").innerHTML = addBackLabel(e.target.value);
+    $("#addback-btn").textContent = addBackLabel(e.target.value);
 });
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape" || !S.sheet) return;

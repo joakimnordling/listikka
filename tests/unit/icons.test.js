@@ -14,7 +14,7 @@ describe("icons", () => {
     assert.match(LUCIDE["chevron-right"], /^<path d="m9 18 6-6-6-6"\/>$/);
   });
   it("has an icon for every role, and generates only the icons in use", () => {
-    for (const role of Object.keys(ICON_NAMES)) assert.doesNotMatch(svg(role), /undefined/, role);
+    for (const role of Object.keys(ICON_NAMES)) assert.doesNotMatch(String(svg(role)), /undefined/, role);
     assert.deepEqual([...new Set(Object.values(ICON_NAMES))].sort(), [...NAMES].sort());
     assert.deepEqual(Object.keys(LUCIDE).sort(), [...NAMES].sort());
   });

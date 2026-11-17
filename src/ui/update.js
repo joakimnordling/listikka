@@ -1,7 +1,9 @@
 // Noticing a newer version, as in Lokki: each build publishes version.json (scripts/build-site.js), and the app
 // compares its commit with its own. A home-screen app on iOS can stay paused for days without reloading, so it checks
 // on start and when it comes back to the front, at most every 15 minutes, and offers a banner to update.
+
 import { BUILD } from "../core/version.js";
+import { html } from "./dom.js";
 
 const EVERY_MS = 15 * 60 * 1000;
 const DISMISSED = "listikka-update-dismissed";
@@ -74,7 +76,7 @@ function banner(info) {
   const b = document.createElement("div");
   b.className = "update";
   b.setAttribute("role", "status");
-  b.innerHTML = `<span>A new version of Listikka is available.</span><button class="go">Update</button><button class="x" aria-label="Dismiss">✕</button>`;
+  b.innerHTML = html`<span>A new version of Listikka is available.</span><button class="go">Update</button><button class="x" aria-label="Dismiss">✕</button>`;
   b.querySelector(".go").onclick = update;
   b.querySelector(".x").onclick = () => {
     dismiss(info.commit); // until a newer one comes out
