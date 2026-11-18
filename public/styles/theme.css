@@ -1,0 +1,191 @@
+/* The font, and the colours of each theme: Dark (indigo, the default), Darker and Light, and Automatic. */
+@font-face {
+  font-family: "Jost";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("../fonts/jost-latin-wght-normal.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Jost";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("../fonts/jost-latin-ext-wght-normal.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* Dark (indigo), the default */
+:root {
+  --outer: #dfe0ee;
+  --hdr: #4347b0;
+  --hdr-fg: #ffffff;
+  --bg: #f6f6fb;
+  --title: #ececf7;
+  --panel: #ffffff;
+  --ink: #191a33;
+  --dim: #66688a;
+  --line: #e2e3f0;
+  --line-strong: #c5c7de;
+  --accent: #4548c2;
+  --gold: #b08433;
+  --btn: #4347b0;
+  --btn-fg: #ffffff;
+  --act: #3b3fa3;
+  --act-fg: #ffffff;
+  --danger: #b3261e;
+  --danger-fg: #ffffff;
+  --danger-bg: #b3261e;
+  --ok: #3f7d4a;
+  --ok-fg: #ffffff;
+  --toast: #191a33;
+  --toast-fg: #ffffff;
+  --toast-accent: #c9cbff;
+  --scrim: rgba(20, 20, 50, 0.4);
+  --font: "Jost", "Futura", "Avenir Next", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --outer: #181a4a;
+    --hdr: #20225f;
+    --hdr-fg: #ffffff;
+    --bg: #2c2f86;
+    --title: #272a7a;
+    --panel: #33369a;
+    --ink: #ffffff;
+    --dim: #c3c5ee;
+    --line: rgba(255, 255, 255, 0.2);
+    --line-strong: rgba(255, 255, 255, 0.38);
+    --accent: #ffffff;
+    --gold: #f0cf8a;
+    --btn: #ffffff;
+    --btn-fg: #20225f;
+    --act: #191a4d;
+    --act-fg: #ffffff;
+    --danger: #ff9b93;
+    --danger-fg: #20225f;
+    --danger-bg: #b02a3c;
+    --ok: #3a7a46;
+    --ok-fg: #ffffff;
+    --toast: #ffffff;
+    --toast-fg: #20225f;
+    --toast-accent: #4347b0;
+    --scrim: rgba(5, 5, 25, 0.55);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --outer: #181a4a;
+  --hdr: #20225f;
+  --hdr-fg: #ffffff;
+  --bg: #2c2f86;
+  --title: #272a7a;
+  --panel: #33369a;
+  --ink: #ffffff;
+  --dim: #c3c5ee;
+  --line: rgba(255, 255, 255, 0.2);
+  --line-strong: rgba(255, 255, 255, 0.38);
+  --accent: #ffffff;
+  --gold: #f0cf8a;
+  --btn: #ffffff;
+  --btn-fg: #20225f;
+  --act: #191a4d;
+  --act-fg: #ffffff;
+  --danger: #ff9b93;
+  --danger-fg: #20225f;
+  --danger-bg: #b02a3c;
+  --ok: #3a7a46;
+  --ok-fg: #ffffff;
+  --toast: #ffffff;
+  --toast-fg: #20225f;
+  --toast-accent: #4347b0;
+  --scrim: rgba(5, 5, 25, 0.55);
+  color-scheme: dark;
+}
+/* The app's own switcher wins over the device setting. */
+:root[data-app-theme="light"] {
+  --outer: #dfe0ee;
+  --hdr: #4347b0;
+  --hdr-fg: #ffffff;
+  --bg: #f6f6fb;
+  --title: #ececf7;
+  --panel: #ffffff;
+  --ink: #191a33;
+  --dim: #66688a;
+  --line: #e2e3f0;
+  --line-strong: #c5c7de;
+  --accent: #4548c2;
+  --gold: #b08433;
+  --btn: #4347b0;
+  --btn-fg: #ffffff;
+  --act: #3b3fa3;
+  --act-fg: #ffffff;
+  --danger: #b3261e;
+  --danger-fg: #ffffff;
+  --danger-bg: #b3261e;
+  --ok: #3f7d4a;
+  --ok-fg: #ffffff;
+  --toast: #191a33;
+  --toast-fg: #ffffff;
+  --toast-accent: #c9cbff;
+  --scrim: rgba(20, 20, 50, 0.4);
+  color-scheme: light;
+}
+:root[data-app-theme="indigo"] {
+  --outer: #181a4a;
+  --hdr: #20225f;
+  --hdr-fg: #ffffff;
+  --bg: #2c2f86;
+  --title: #272a7a;
+  --panel: #33369a;
+  --ink: #ffffff;
+  --dim: #c3c5ee;
+  --line: rgba(255, 255, 255, 0.2);
+  --line-strong: rgba(255, 255, 255, 0.38);
+  --accent: #ffffff;
+  --gold: #f0cf8a;
+  --btn: #ffffff;
+  --btn-fg: #20225f;
+  --act: #191a4d;
+  --act-fg: #ffffff;
+  --danger: #ff9b93;
+  --danger-fg: #20225f;
+  --danger-bg: #b02a3c;
+  --ok: #3a7a46;
+  --ok-fg: #ffffff;
+  --toast: #ffffff;
+  --toast-fg: #20225f;
+  --toast-accent: #4347b0;
+  --scrim: rgba(5, 5, 25, 0.55);
+  color-scheme: dark;
+}
+:root[data-app-theme="darker"] {
+  --outer: #0a0b1c;
+  --hdr: #1c1e48;
+  --hdr-fg: #eef0ff;
+  --bg: #11122a;
+  --title: #171938;
+  --panel: #1a1c3c;
+  --ink: #e9eaff;
+  --dim: #9a9cc4;
+  --line: #2a2c55;
+  --line-strong: #3d4075;
+  --accent: #8f93ff;
+  --gold: #e7c27c;
+  --btn: #8f93ff;
+  --btn-fg: #11122a;
+  --act: #2a2c66;
+  --act-fg: #ffffff;
+  --danger: #ff8a80;
+  --danger-fg: #11122a;
+  --danger-bg: #a8283a;
+  --ok: #356f40;
+  --ok-fg: #ffffff;
+  --toast: #e9eaff;
+  --toast-fg: #11122a;
+  --toast-accent: #3b3fa3;
+  --scrim: rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}

@@ -1,0 +1,90 @@
+/* The page: reset, the one phone-width column, the header and the scrolling area. */
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+[hidden] {
+  /* biome-ignore lint/complexity/noImportantStyles: [hidden] must win over every display rule */
+  display: none !important;
+}
+body {
+  background: var(--outer);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 16px;
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+svg {
+  flex: none;
+  display: block;
+}
+
+#app {
+  max-width: 480px;
+  height: 100%;
+  /* ends above the on-screen keyboard (src/ui/keyboard.js) */
+  box-sizing: border-box;
+  padding-bottom: var(--kb, 0px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  position: relative;
+  overflow: hidden;
+}
+.top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) 14px
+    max(16px, env(safe-area-inset-left, 0px));
+  background: var(--hdr);
+  color: var(--hdr-fg);
+}
+.top h1 {
+  margin: 0;
+  flex: 1;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.top.sub {
+  padding-left: max(4px, env(safe-area-inset-left, 0px));
+}
+.top.sub h1 {
+  font-size: 22px;
+}
+.scroll {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--bg);
+}
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 0;
+  border-radius: 10px;
+  color: inherit;
+  padding: 0;
+  flex: none;
+}

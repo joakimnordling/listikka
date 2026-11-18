@@ -57,8 +57,13 @@ export async function buildSite() {
   ).outputFiles[0].text;
   const jsName = `assets/app-${hash(js)}.js`;
   await writeFile(join(out, jsName), js);
-  // The stylesheet sits one level down, as in public/, so its ../fonts/ paths still work.
-  const css = await readFile(join(root, "public", "styles", "app.css"), "utf8");
+  // The stylesheet sits one level down, as in public/, so its ../fonts/ paths still work. app.css only imports the
+  // others, which go into it in its order, so the site loads one stylesheet.
+  const styles = join(root, "public", "styles");
+  const entry = await readFile(join(styles, "app.css"), "utf8");
+  const parts = [...entry.matchAll(/^@import "([\w-]+\.css)";$/gm)].map((m) => m[1]);
+  if (!parts.length) throw new Error("app.css: no @import lines");
+  const css = (await Promise.all(parts.map((f) => readFile(join(styles, f), "utf8")))).join("\n");
   const cssName = `assets/app-${hash(css)}.css`;
   await writeFile(join(out, cssName), css);
 

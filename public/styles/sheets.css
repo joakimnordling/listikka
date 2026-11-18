@@ -1,0 +1,205 @@
+/* Sheets: their fields and buttons, and menus. */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--scrim);
+  animation: fade 0.15s ease-out;
+}
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--kb, 0px);
+  z-index: 61;
+  max-width: 480px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 10px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  background: var(--panel);
+  color: var(--ink);
+  animation: up 0.2s ease-out;
+  max-height: calc(92% - var(--kb, 0px));
+  overflow-y: auto;
+}
+.sheet h2 {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 600;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+.sheet p {
+  margin: 0;
+  color: var(--dim);
+  font-size: 15px;
+  line-height: 1.45;
+}
+.grab {
+  width: 40px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--line-strong);
+  align-self: center;
+  flex: none;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--dim);
+  font-size: 13px;
+  min-width: 0;
+}
+.field input,
+.field select {
+  height: 48px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 16px;
+  min-width: 0;
+  width: 100%;
+}
+/* a select with its own chevron, as far from the right edge as the text is from the left; browsers place theirs
+   differently, some very close to the edge */
+.select {
+  position: relative;
+  display: block;
+}
+.field .select select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 44px;
+}
+.select::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  width: 18px;
+  height: 18px;
+  margin-top: -9px;
+  background: var(--ink);
+  pointer-events: none;
+  -webkit-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+/* the quantity, with − and + at its right end */
+.qty {
+  display: flex;
+  gap: 8px;
+}
+.qty input {
+  flex: 1;
+}
+.qty .step {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--ink);
+}
+.qty .step[hidden] {
+  display: none;
+}
+.qty .step:disabled {
+  opacity: 0.35;
+}
+.two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.primary {
+  height: 54px;
+  flex: none;
+  border: 0;
+  border-radius: 14px;
+  background: var(--btn);
+  color: var(--btn-fg);
+  font-size: 17px;
+  font-weight: 600;
+}
+.quiet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  align-self: center;
+  min-height: 44px;
+  padding: 0 14px;
+  background: none;
+  border: 0;
+  color: var(--dim);
+  font-size: 15px;
+}
+.danger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 50px;
+  flex: none;
+  border: 1.5px solid var(--danger);
+  border-radius: 14px;
+  background: none;
+  color: var(--danger);
+  font-size: 16px;
+  font-weight: 600;
+}
+.menu {
+  display: flex;
+  flex-direction: column;
+  margin: 0 -20px;
+}
+.menu button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 54px;
+  padding: 0 20px;
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 17px;
+  text-align: left;
+}
+.menu button.warn {
+  color: var(--danger);
+}
+@keyframes up {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

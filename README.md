@@ -44,12 +44,22 @@ the shared manager with Listikka's settings.
 
 ## Screens
 
-`src/app.js` draws the app from the stored records and changes them only through the core's list actions, so every
-change gets its timestamps and merges with other devices' changes. Which lists are open, which hide ticked items,
-drafts and the theme are each device's own, kept in localStorage. `public/` holds the page, the stylesheet, the
-manifest and the app icons; `npm run app-icons` redraws the PNG icons from `public/icons/listikka-icon.svg`. The
-icons inside the app come from Lucide: `scripts/build-icons.js` lists the ones in use, and `npm run icons` regenerates
-`src/ui/lucide.js` from the `lucide-static` package; a test fails when it's out of date.
+The screens are drawn from the stored records, which change only through the core's list actions, so every change
+gets its timestamps and merges with other devices' changes. Which lists are open, which hide ticked items, drafts and
+the theme are each device's own, kept in localStorage.
+
+- `src/app.js` starts the app.
+- `src/ui/state.js` holds the data and what the screen is doing.
+- `src/ui/render.js` draws the current view.
+- Each of the other modules in `src/ui/` draws its part (the lists, adding, menus, sheets, settings, sync setup,
+  backups) and registers what its taps and sheets do in `src/ui/registry.js`.
+- `src/ui/dom.js` has `esc()`, which every name or note typed by a person goes through before it's put into the page.
+
+`public/styles/app.css` imports one stylesheet per part of the screen, and the build joins them into one file.
+`public/` also holds the page, the manifest and the app icons; `npm run app-icons` redraws the PNG icons from
+`public/icons/listikka-icon.svg`. The icons inside the app come from Lucide: `scripts/build-icons.js` lists the ones
+in use, and `npm run icons` regenerates `src/ui/lucide.js` from the `lucide-static` package; a test fails when it's
+out of date.
 
 ## Development
 
