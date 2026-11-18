@@ -3,7 +3,7 @@
 import { backupText, parseBackup, planRestore } from "../core/backup.js";
 import { zipOne } from "../core/zip.js";
 import { clearCopy, clearEverything } from "../data/clear.js";
-import { $ } from "./dom.js";
+import { $, html } from "./dom.js";
 import { fileStamp, readText, saveFile } from "./files.js";
 import { svg } from "./icons.js";
 import { onActs, sheetBodies } from "./registry.js";
@@ -95,7 +95,6 @@ onActs({
 
 sheetBodies({
   restore: () => {
-    let body = "";
     const p = S.sheet.plan;
     const at = new Date(S.sheet.header.exported);
     const when = Number.isNaN(+at)
@@ -104,33 +103,30 @@ sheetBodies({
     const adds = [count(p.added.list, "list"), count(p.added.item, "item")].filter(Boolean).join(" and ");
     const changes = [count(p.changed.list, "list"), count(p.changed.item, "item")].filter(Boolean).join(" and ");
     const what = [adds && `adds ${adds}`, changes && `updates ${changes}`].filter(Boolean).join(", and ");
-    body = `<h2 id="sheet-title">Restore from backup</h2>
+    return html`<h2 id="sheet-title">Restore from backup</h2>
         <p>${when}The backup has ${count(p.has.list, "list") || "no lists"} and ${count(p.has.item, "item") || "no items"}.</p>
         <p id="restore-plan">${what ? `Restoring ${what}. Nothing changed here since the backup is overwritten.` : "Nothing to restore: Listikka already has everything in this backup."}</p>
-        ${what ? `<button class="primary" data-act="restore-confirm">Restore</button><button class="quiet" data-act="close-sheet">Cancel</button>` : `<button class="primary" data-act="close-sheet">Close</button>`}`;
-    return body;
+        ${what ? html`<button class="primary" data-act="restore-confirm">Restore</button><button class="quiet" data-act="close-sheet">Cancel</button>` : html`<button class="primary" data-act="close-sheet">Close</button>`}`;
   },
   clear: () => {
-    let body = "";
     const st = sync.status();
     const synced = st.setUp && st.servers.length;
     const lost = synced ? st.unsynced : 0;
-    body = synced
-      ? `<h2 id="sheet-title">Clear data</h2>
+    return synced
+      ? html`<h2 id="sheet-title">Clear data</h2>
         <p>This removes data from this device only. Your servers keep your lists.</p>
-        ${lost ? `<p class="err">${lost === 1 ? "1 change hasn't" : `${lost} changes haven't`} reached any server yet and would be lost. Sync first, or back up.</p>` : ""}
+        ${lost ? html`<p class="err">${lost === 1 ? "1 change hasn't" : `${lost} changes haven't`} reached any server yet and would be lost. Sync first, or back up.</p>` : ""}
         <div class="menu"><button data-act="clear-copy">${svg("refresh")}Clear and download again</button></div>
         <p>Removes this device's copy of your lists and downloads it again. Your sync setup and settings stay.</p>
         <button class="danger" data-act="clear-all">${svg("trash", 18)}Clear everything</button>
         <p>Also removes the sync setup and this device's settings. To sync again, you'll need each server's URL and token, and your passphrase.</p>
         <button class="primary" data-act="close-sheet">Cancel</button>`
-      : `<h2 id="sheet-title">Clear data</h2>
+      : html`<h2 id="sheet-title">Clear data</h2>
         <p>Your lists are saved only on this device. Clearing removes them for good, unless you have a backup.</p>
         <div class="menu"><button data-act="clear-backup">${svg("download")}Back up first</button></div>
         <button class="danger" data-act="clear-all">${svg("trash", 18)}Clear everything</button>
         <p>Removes your lists and this device's settings.</p>
         <button class="primary" data-act="close-sheet">Cancel</button>`;
-    return body;
   },
 });
 

@@ -1,4 +1,5 @@
 // The icons Listikka uses, by role. The markup comes from Lucide via the generated lucide.js (npm run icons).
+import { raw } from "./dom.js";
 import { LUCIDE } from "./lucide.js";
 
 export const ICON_NAMES = {
@@ -31,4 +32,6 @@ export const ICON_NAMES = {
 
 // A complete <svg> for an icon role, hidden from screen readers: the button or text next to it says what it is.
 export const svg = (role, size = 20) =>
-  `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LUCIDE[ICON_NAMES[role]]}</svg>`;
+  raw(
+    `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LUCIDE[ICON_NAMES[role]]}</svg>`,
+  );

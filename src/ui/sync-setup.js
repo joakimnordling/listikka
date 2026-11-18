@@ -3,7 +3,7 @@
 import { DamagedKeyringError, WrongPassphraseError } from "../../vendor/lokki-sync/crypto.js";
 import { OtherAppError } from "../../vendor/lokki-sync/engine.js";
 import { OTHER_APP } from "../sync/manager.js";
-import { $, $$, esc } from "./dom.js";
+import { $, $$, html } from "./dom.js";
 import { svg } from "./icons.js";
 import { onActs, sheetBodies } from "./registry.js";
 import { render } from "./render.js";
@@ -150,34 +150,32 @@ onActs({
 
 sheetBodies({
   connect: (err) => {
-    return `<h2 id="sheet-title">Add server</h2>
+    return html`<h2 id="sheet-title">Add server</h2>
       <p>Sync keeps your lists on several devices through a server you choose. Everything is encrypted on this device with a passphrase only you know; the server can't read it.</p>
-      ${canScan() ? `<button type="button" class="scan-btn" data-act="scan"${S.sheet.busy ? " disabled" : ""}>${svg("scan")}Scan QR Code</button><div class="or">or type them</div>` : ""}
+      ${canScan() ? html`<button type="button" class="scan-btn" data-act="scan"${S.sheet.busy ? " disabled" : ""}>${svg("scan")}Scan QR Code</button><div class="or">or type them</div>` : ""}
       <form id="connect-form" autocomplete="off" style="display: contents">
-      <label class="field">URL<input id="f-url" type="url" inputmode="url" placeholder="https://sync.example.com" value="${esc(S.sheet.url || "")}" autocapitalize="off" spellcheck="false"></label>
-      <label class="field">Token<input id="f-token" placeholder="lk_…" value="${esc(S.sheet.token || "")}" autocapitalize="off" spellcheck="false"></label>
+      <label class="field">URL<input id="f-url" type="url" inputmode="url" placeholder="https://sync.example.com" value="${S.sheet.url || ""}" autocapitalize="off" spellcheck="false"></label>
+      <label class="field">Token<input id="f-token" placeholder="lk_…" value="${S.sheet.token || ""}" autocapitalize="off" spellcheck="false"></label>
       ${err}<button class="primary" type="submit" data-busy="Connecting…">Connect</button></form>`;
   },
   passphrase: (err) => {
-    let body = "";
     const fresh = !S.sheet.keyring;
-    body = fresh
-      ? `<h2 id="sheet-title">New passphrase</h2>
+    return fresh
+      ? html`<h2 id="sheet-title">New passphrase</h2>
       <p>The passphrase encrypts your lists before they leave this device. Keep it somewhere safe, such as a password manager: if you forget it, nobody can open the data on servers. Devices already set up keep working.</p>
       <form id="pass-form" autocomplete="off" style="display: contents">
       <label class="field">Passphrase<input id="p1" type="password" autocomplete="new-password"></label>
       <div class="meter" id="meter" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
       <label class="field">Again<input id="p2" type="password" autocomplete="new-password"></label>
       ${err}<button class="primary" type="submit" data-busy="Setting up…">Start syncing</button></form>`
-      : `<h2 id="sheet-title">Passphrase</h2>
+      : html`<h2 id="sheet-title">Passphrase</h2>
       <p>This server already holds your lists. Enter the passphrase you chose when you set up sync. Lists already on this device are added to them.</p>
       <form id="pass-form" autocomplete="off" style="display: contents">
       <label class="field">Passphrase<input id="p1" type="password" autocomplete="current-password"></label>
       ${err}<button class="primary" type="submit" data-busy="Opening…">Join</button></form>`;
-    return body;
   },
   "change-pass": (err) => {
-    return `<h2 id="sheet-title">Change passphrase</h2>
+    return html`<h2 id="sheet-title">Change passphrase</h2>
       <p>The new passphrase opens your lists on servers from now on. Devices already set up keep working without it.</p>
       <form id="change-form" autocomplete="off" style="display: contents">
       <label class="field">Current<input id="p0" type="password" autocomplete="current-password"></label>
@@ -188,18 +186,13 @@ sheetBodies({
       <button class="quiet" data-act="close-sheet">Cancel</button>`;
   },
   server: () => {
-    let body = "";
     const s = sync.status().servers.find((x) => x.bit === S.sheet.bit);
-    if (!s) {
-      closeSheet();
-      return;
-    }
-    body = `<h2 id="sheet-title">${esc(s.name)}</h2>
-      <p>${esc(s.url)}<br>${s.last ? (s.last.ok ? `Synced ${ago(s.last.at)}.` : esc(s.last.error || "Sync failed.")) : "Not synced yet."}${s.lacks ? ` ${s.lacks} ${s.lacks === 1 ? "change" : "changes"} waiting.` : ""}</p>
+    if (!s) return null;
+    return html`<h2 id="sheet-title">${s.name}</h2>
+      <p>${s.url}<br>${s.last ? (s.last.ok ? `Synced ${ago(s.last.at)}.` : s.last.error || "Sync failed.") : "Not synced yet."}${s.lacks ? ` ${s.lacks} ${s.lacks === 1 ? "change" : "changes"} waiting.` : ""}</p>
       <div class="menu"><button data-act="sync-now">${svg("refresh")}Sync now</button>
       <button class="warn" data-act="server-remove">${svg("x")}Stop using this server</button></div>
       <button class="primary" data-act="close-sheet">Done</button>`;
-    return body;
   },
 });
 

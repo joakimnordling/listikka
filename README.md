@@ -53,7 +53,8 @@ the theme are each device's own, kept in localStorage.
 - `src/ui/render.js` draws the current view.
 - Each of the other modules in `src/ui/` draws its part (the lists, adding, menus, sheets, settings, sync setup,
   backups) and registers what its taps and sheets do in `src/ui/registry.js`.
-- `src/ui/dom.js` has `esc()`, which every name or note typed by a person goes through before it's put into the page.
+- Markup is written with `html` from `src/ui/dom.js`: every value put into it is escaped, so a name or note typed
+  by a person always shows as text. Only other `html` results and the icons go in as markup.
 
 `public/styles/app.css` imports one stylesheet per part of the screen, and the build joins them into one file.
 `public/` also holds the page, the manifest and the app icons; `npm run app-icons` redraws the PNG icons from

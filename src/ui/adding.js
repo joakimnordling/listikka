@@ -1,7 +1,7 @@
 // The add field: what typing a name does, removed items offered back, and drafts.
 
 import * as L from "../core/lists.js";
-import { $, $$, esc } from "./dom.js";
+import { $, $$, html } from "./dom.js";
 import { svg } from "./icons.js";
 import { keepInView } from "./keyboard.js";
 import { onActs } from "./registry.js";
@@ -31,8 +31,8 @@ export function updateSugg() {
   box.innerHTML = c
     .reverse()
     .map((i) => {
-      const from = listOf(i) !== S.adding ? `<span class="from">from ${esc(listName(listOf(i)))}</span>` : "";
-      return `<button type="button" class="sg" data-act="suggestion" data-sg="${i.id}">${svg("undo", 16)}<span>${esc(i.name)}</span>${i.q ? `<span class="q">${esc(i.q)}</span>` : ""}${from}<span class="sg-act">Add back</span></button>`;
+      const from = listOf(i) !== S.adding ? html`<span class="from">from ${listName(listOf(i))}</span>` : "";
+      return html`<button type="button" class="sg" data-act="suggestion" data-sg="${i.id}">${svg("undo", 16)}<span>${i.name}</span>${i.q ? html`<span class="q">${i.q}</span>` : ""}${from}<span class="sg-act">Add back</span></button>`;
     })
     .join("");
   // Suggestions grow above the field and would push it under the keyboard
