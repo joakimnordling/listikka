@@ -82,6 +82,12 @@
 .item {
   position: relative;
   overflow: hidden;
+  /* no bullet, also when the row isn't in its list: the copy that follows the finger while moving an item */
+  list-style: none;
+  /* holding a row moves it: no text selection or callout, also on the swipe buttons behind it */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
   border-bottom: 1px solid var(--line);
   background: var(--bg);
 }
@@ -172,9 +178,6 @@
   background: var(--bg);
   transition: transform 0.18s ease;
   touch-action: pan-y;
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
 }
 .row.open {
   transform: translateX(-88px);

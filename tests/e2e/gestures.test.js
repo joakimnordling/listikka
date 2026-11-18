@@ -69,6 +69,8 @@ describe("gestures", () => {
     await P.mouse.down();
     await P.waitForSelector("li.item.dragging");
     assert.deepEqual(await slotted(), ["slot", "Milk"]);
+    // the row following the finger is outside its list, and has no bullet
+    assert.equal(await P.$eval("li.ghost", (g) => getComputedStyle(g).listStyleType), "none");
     await P.mouse.move(eggs.x + 10, milk.y + milk.height - 5, { steps: 12 });
     assert.deepEqual(await slotted(), ["Milk", "slot"]);
     await P.mouse.up();
