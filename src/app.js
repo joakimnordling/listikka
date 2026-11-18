@@ -16,6 +16,7 @@ import "./ui/settings.js";
 import "./ui/sync-setup.js";
 import "./ui/toast.js";
 import "./ui/gestures.js";
+import "./ui/refresh.js";
 
 // The field being typed in stays above the keyboard, in the list or in a sheet.
 const typingIn = () => {

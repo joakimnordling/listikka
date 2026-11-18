@@ -42,8 +42,13 @@ export async function startHarness({ args = [] } = {}) {
   const errors = [];
 
   /** A new device: its own browser context, with the app loaded and ready. Script errors go to `errors`. */
-  async function device({ viewport = { width: 393, height: 852 }, userAgent } = {}) {
-    const ctx = await browser.newContext({ viewport, serviceWorkers: "block", ...(userAgent ? { userAgent } : {}) });
+  async function device({ viewport = { width: 393, height: 852 }, userAgent, touch = false } = {}) {
+    const ctx = await browser.newContext({
+      viewport,
+      serviceWorkers: "block",
+      ...(userAgent ? { userAgent } : {}),
+      ...(touch ? { hasTouch: true } : {}),
+    });
     const pg = await ctx.newPage();
     pg.on("pageerror", (e) => errors.push(e.message));
     await pg.goto(`${base}/`);
@@ -129,4 +134,26 @@ export async function holdAndDrag(pg, selector, to) {
 export async function settings(pg) {
   await pg.click('[data-act="app-menu"]');
   await pg.click('[data-act="a-settings"]');
+}
+
+/** Run as a Home Screen app from now on: reloads the page with navigator.standalone set. */
+export async function standalone(pg) {
+  await pg.addInitScript(() => Object.defineProperty(navigator, "standalone", { get: () => true }));
+  await pg.reload();
+  await ready(pg);
+}
+
+/**
+ * A finger pulling down `by` px from y = 300, with real touch events. Calls `during` before letting go, so a test
+ * can look at what the pull shows. The page needs a device made with {touch: true}.
+ */
+export async function pullDown(pg, by, during = async () => {}) {
+  const cdp = await pg.context().newCDPSession(pg);
+  const at = (y) => [{ x: 200, y }];
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: at(300) });
+  for (let i = 1; i <= 10; i++)
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: at(300 + (by * i) / 10) });
+  await during();
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
 }

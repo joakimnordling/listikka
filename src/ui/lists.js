@@ -5,6 +5,7 @@ import { state } from "../core/records.js";
 import { $, html } from "./dom.js";
 import { svg } from "./icons.js";
 import { installWay } from "./install.js";
+import { pullIndicator } from "./refresh.js";
 import { onActs } from "./registry.js";
 import { render, syncDot } from "./render.js";
 import { openSheet } from "./sheets.js";
@@ -45,7 +46,7 @@ export function renderMain() {
   const h = [
     html`<header class="top"><h1>Listikka</h1><button class="icon-btn dot-host" data-act="app-menu" aria-label="${label}">${svg("more", 24)}${syncDot()}</button></header>`,
   ];
-  h.push(html`<div class="scroll" id="scroll"><div class="lists">`);
+  h.push(html`<div class="scroll" id="scroll">${pullIndicator()}<div class="lists">`);
   h.push(renderSection(""));
   for (const l of activeLists()) h.push(renderSection(l.id));
   const lists = activeLists().length;
