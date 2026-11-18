@@ -1,7 +1,6 @@
 /* Holding an item to move it, and holding a list's title to reorder the lists. */
 .item.dragging {
   box-sizing: border-box;
-  list-style: none;
   border: 2px dashed var(--line-strong);
 }
 .item.dragging > * {

@@ -82,6 +82,8 @@
 .item {
   position: relative;
   overflow: hidden;
+  /* no bullet, also when the row isn't in its list: the copy that follows the finger while moving an item */
+  list-style: none;
   border-bottom: 1px solid var(--line);
   background: var(--bg);
 }
