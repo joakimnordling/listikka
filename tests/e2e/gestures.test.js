@@ -71,6 +71,17 @@ describe("gestures", () => {
     assert.deepEqual(await slotted(), ["slot", "Milk"]);
     // the row following the finger is outside its list, and has no bullet
     assert.equal(await P.$eval("li.ghost", (g) => getComputedStyle(g).listStyleType), "none");
+    // nor can holding text select it, anywhere but in fields
+    assert.deepEqual(
+      await P.evaluate(() => {
+        const field = document.createElement("input");
+        document.querySelector("#app").append(field);
+        const r = [getComputedStyle(document.querySelector(".lname")).userSelect, getComputedStyle(field).userSelect];
+        field.remove();
+        return r;
+      }),
+      ["none", "text"],
+    );
     await P.mouse.move(eggs.x + 10, milk.y + milk.height - 5, { steps: 12 });
     assert.deepEqual(await slotted(), ["Milk", "slot"]);
     await P.mouse.up();
