@@ -34,7 +34,8 @@ export async function startHarness({ args = [] } = {}) {
   });
   await new Promise((ok) => server.listen(0, "127.0.0.1", ok));
   const base = `http://127.0.0.1:${server.address().port}`;
-  // CHROMIUM_PATH: run with a Chromium other than the one this Playwright version downloads (local runs only)
+  // CHROMIUM_PATH: run with a Chrome or Chromium other than the one this Playwright version downloads: CI uses the
+  // runner's Google Chrome
   const browser = await chromium.launch({
     args,
     ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}),
