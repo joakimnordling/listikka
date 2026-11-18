@@ -85,6 +85,7 @@ export const S = {
   rendering: false,
   toastTimer: null,
   undoSnap: null,
+  refreshing: false, // pulled to refresh, and syncing or checking for an update
 };
 
 export const openClass = (key) => (S.swipeOpen === key ? (S.swipeDir === "r" ? " open-r" : " open") : "");

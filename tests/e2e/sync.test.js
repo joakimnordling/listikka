@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import { startServer } from "../sync/server.js";
-import { addItems, row, settings, shown, startHarness, toastText } from "./harness.js";
+import { addItems, pullDown, row, settings, shown, standalone, startHarness, toastText } from "./harness.js";
 
 const PASS = "bilberry pie on sunday";
 const NEW = "lingonberry jam on monday";
@@ -15,7 +15,7 @@ describe("sync in Settings", () => {
     server = await startServer({ cors: [h.base] });
     vault = await server.vault();
     A = await h.device();
-    B = await h.device();
+    B = await h.device({ touch: true });
   });
   after(async () => {
     await h.close();
@@ -102,6 +102,17 @@ describe("sync in Settings", () => {
       assert.ok((await shown(pg, "")).includes("Oat milk 2 l"));
       assert.ok(await pg.$eval(row("Eggs"), (li) => li.classList.contains("done")));
     }
+  });
+
+  it("pulling down to refresh, as an app, syncs now and says so", async () => {
+    await standalone(B);
+    await B.waitForFunction(() => !window.__listikka.sync.running);
+    await addItems(A, "", "Butter");
+    await syncNow(A);
+    assert.ok(!(await shown(B, "")).includes("Butter"));
+    await pullDown(B, 200);
+    assert.equal(await toastText(B, /Synced/), "Synced. Listikka is up to date.");
+    assert.ok((await shown(B, "")).includes("Butter"));
   });
 
   it("the header shows a hollow dot while a change waits to sync", async () => {

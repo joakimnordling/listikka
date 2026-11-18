@@ -303,3 +303,30 @@
     transform: scale(1.5);
   }
 }
+
+/* Pull to refresh: the arrow above the lists, as tall as the pull (src/ui/refresh.js) */
+.ptr {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: var(--dim);
+  transition: height 0.2s ease;
+}
+.ptr.pulling {
+  transition: none;
+}
+.ptr svg {
+  transition: color 0.15s;
+}
+.ptr.armed {
+  color: var(--ink);
+}
+.ptr.spinning svg {
+  color: var(--ink);
+  animation: ptr-spin 0.8s linear infinite;
+}
+@keyframes ptr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

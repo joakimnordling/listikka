@@ -10,7 +10,7 @@ const DISMISSED = "listikka-update-dismissed";
 let lastCheck = 0;
 
 /** Whether this app can check: a build, served over http(s). */
-const canCheck = () => !!BUILD.commit && location.protocol.startsWith("http");
+export const canCheck = () => !!BUILD.commit && location.protocol.startsWith("http");
 
 const dismissed = () => {
   try {
