@@ -20,12 +20,24 @@ export function closeSheet() {
   placeToast();
 }
 
-// While a sheet is open, the toast moves up above it, so it never covers the sheet's buttons and Undo stays in reach.
+// While a sheet is open, the toast moves up above it, so it never covers the sheet's buttons and Undo stays in reach;
+// unless the sheet is too tall to leave room above it, as Add a device with its QR code: then it stays at the bottom,
+// over the sheet. A toast that has just appeared is put in place without sliding there.
 export function placeToast() {
   const t = $(".toast");
   if (!t) return;
   const s = $(".sheet");
-  t.style.bottom = s ? `calc(${s.getBoundingClientRect().height + 12}px + var(--kb, 0px))` : "";
+  const h = s ? s.getBoundingClientRect().height : 0;
+  const room = s && innerHeight - h - 12 >= t.getBoundingClientRect().height + 24;
+  const bottom = room ? `calc(${h + 12}px + var(--kb, 0px))` : "";
+  if (t.style.bottom === bottom) return;
+  if (!t.dataset.placed) t.style.transition = "none";
+  t.style.bottom = bottom;
+  if (!t.dataset.placed) {
+    t.getBoundingClientRect(); // the place takes effect before the transition is back
+    t.style.transition = "";
+    t.dataset.placed = "1";
+  }
 }
 
 function listOptions(selected, item) {
