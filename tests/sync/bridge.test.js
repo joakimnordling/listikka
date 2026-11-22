@@ -30,6 +30,7 @@ async function device(relays) {
     },
     makeDevice: () => new ListikkaDevice(store, { keyring: null, save() {} }),
     relays,
+    retired: [],
     relayOptions: { timeout: 2000 },
   });
   await groups.load();

@@ -12,7 +12,7 @@
    into "recent".
 
    The group's state is a row in the sync store, kept by manager.js and changed here:
-     {k: "group:<bit>", bit, key, device, relays, epoch, chunks, recent, at, heads, last}
+     {k: "group:<bit>", bit, key, device, epoch, chunks, recent, at, heads, last}
        device   this device's ID in the group (random)
        epoch    how many times this device compacted; chunks: how many chunks it published then
        recent   the records in this device's "recent", as "<kind>/<id>"
