@@ -11,7 +11,9 @@ export class ListikkaDevice {
   constructor(store, vault, unreadable = []) {
     this.store = store;
     this.vault = vault;
-    this.dirty = []; // writes of bits changed since the last persist
+    // Records whose bits changed since the last persist, as "kind\u0000id". Their rows are made when saving, from what's
+    // in memory then: a row made earlier could hold an older version, edited since, and overwrite the edit
+    this.dirty = new Map();
     this.unreadableRows = new Map(unreadable.map((r) => [r.k.slice("unreadable:".length), r.bits]));
     this.unreadableDirty = new Set();
   }
@@ -31,8 +33,7 @@ export class ListikkaDevice {
     this.store.changed();
   }
   #bits(kind, id, f) {
-    const op = this.store.setBits(kind, id, f(this.store.bits(kind, id)));
-    if (op) this.dirty.push(op);
+    if (this.store.setBits(kind, id, f(this.store.bits(kind, id)))) this.dirty.set(`${kind}\u0000${id}`, [kind, id]);
   }
   markHas(kind, id, bit) {
     this.#bits(kind, id, (b) => b | (1 << bit));
@@ -101,13 +102,13 @@ export class ListikkaDevice {
    * in one transaction: a row's unreadable bit must never be lost while the server's cursor is saved past it.
    */
   async persist(also = []) {
-    const ops = [...this.dirty];
+    const ops = [...this.dirty.values()].map(([kind, id]) => this.store.row(kind, id)).filter(Boolean);
     for (const key of this.unreadableDirty) {
       const bits = this.unreadableRows.get(key);
       ops.push(bits ? ["sync", "put", { k: `unreadable:${key}`, bits }] : ["sync", "delete", `unreadable:${key}`]);
     }
     ops.push(...also.map(([op, value]) => ["sync", op, value]));
-    this.dirty = [];
+    this.dirty.clear();
     this.unreadableDirty.clear();
     await this.store.db.write(ops);
   }
