@@ -106,7 +106,7 @@ export function renderGroupPage() {
       ${devicesSection(g)}
       <button class="nav-row" data-act="add-device" style="border-top: 0">${svg("qr")}Add a device</button>
       <h2>Relays</h2>
-      ${g.relays.map((r) => html`<div class="srow relay">${svg("relay")}<span class="meta"><b>${r.host}</b>${relayLine(r)}</span></div>`)}
+      ${g.relays.map((r) => html`<div class="srow relay${r.retiring ? " stale" : ""}">${svg("relay")}<span class="meta"><b>${r.host}${r.retiring ? " (being retired)" : ""}</b>${relayLine(r)}</span></div>`)}
       <h2>Group</h2>
       ${g.paused ? "" : html`<button class="nav-row" data-act="group-sync-now">${svg("refresh")}Sync now</button>`}
       <button class="nav-row" data-act="group-pause"${g.paused ? "" : ' style="border-top: 0"'}>${g.paused ? html`${svg("play")}Resume` : html`${svg("pause")}Pause on this device`}</button>

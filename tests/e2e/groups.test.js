@@ -100,10 +100,11 @@ describe("sharing groups", () => {
     assert.match(await A.textContent(".group-head"), /Synced just now/);
     // each relay's answer: here every one of them goes to the test's relay
     assert.deepEqual(await A.$$eval(".relay b", (els) => els.map((e) => e.textContent)), [
-      "relay.damus.io",
       "nos.lol",
       "relay.primal.net",
       "relay.nostr.net",
+      "offchain.pub",
+      "relay.damus.io (being retired)",
     ]);
     for (const line of await A.$$eval(".relay .meta span", (els) => els.map((e) => e.textContent)))
       assert.match(line, /^Answering · took your last change/);

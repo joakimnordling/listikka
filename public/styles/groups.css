@@ -94,6 +94,6 @@
 .srow.device .meta span .warn {
   color: var(--gold);
 }
-.srow.device.stale {
+.srow.stale {
   opacity: 0.55;
 }

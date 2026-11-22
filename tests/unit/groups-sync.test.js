@@ -29,6 +29,7 @@ async function device(relays, db = createMemoryDb()) {
     },
     makeDevice: () => new ListikkaDevice(store, { keyring: null, save() {} }),
     relays,
+    retired: [],
     relayOptions: fast,
   });
   await groups.load();
@@ -258,6 +259,21 @@ describe("a sharing group", () => {
     await again.add("Honey");
     await rounds([again, B]);
     assert.ok(B.item("Honey"));
+  });
+
+  it("uses the app's relays, whatever relays a group was made with", async () => {
+    const db = createMemoryDb();
+    const old = await device([one.url], db);
+    const g = await old.groups.add(key);
+    // as made by an older version, which kept each group's relays
+    await db.write([["sync", "put", { ...g, relays: ["wss://gone.example"] }]]);
+    const later = await device([two.url], db);
+    assert.deepEqual(
+      later.groups.status().groups[0].relays.map((r) => r.url),
+      [two.url],
+    );
+    await run(later.groups);
+    assert.equal(later.groups.groups[0].last.ok, true, later.groups.groups[0].last.error);
   });
 
   it("leaving a group keeps the lists here, and its bit is clear for the next", async () => {

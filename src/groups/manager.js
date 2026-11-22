@@ -3,10 +3,10 @@
    (src/sync/manager.js) on the same store: servers use the records' bits 0 to 14, groups 15 to 30, and each has its
    own sync device, which saves records' bits from what's in memory, so neither writes over the other's.
 
-   createGroups({app, store, makeDevice, relays, relayOptions, onSynced}):
+   createGroups({app, store, makeDevice, relays, retired, relayOptions, onSynced}):
      store         the sync store: all() -> rows, write(ops) with ["put", row] / ["delete", k]
      makeDevice    () -> a sync device (src/sync/device.js)
-     relays        the relays new groups use (DEFAULT_RELAYS)
+     relays        the relays every group uses (RELAYS); retired: relays being retired (RETIRED_RELAYS)
      relayOptions  for relay.js: {WebSocket, timeout}
      onSynced      called after a round that changed something here */
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
@@ -19,16 +19,19 @@ import { compare, forgetEvents, hostOf, syncGroup } from "./sync.js";
 export const GROUP_BITS = { from: 15, to: 30 };
 
 /**
- * The public relays a new group uses. Every event goes to all of them, so the group works while any one does. Free,
- * general relays running strfry, whose defaults take events up to 64 KB dated up to 15 minutes ahead; not yet
- * checked for how long they keep kind 30078 events (see the design notes).
+ * The public relays every group uses. They're the same for every device in a group, or the devices would never meet,
+ * so they're the app's, not a group's: a group made with other relays uses these too. Every event goes to all of
+ * them, so a group works while any one does. Free, general relays running strfry, whose defaults take events up to
+ * 64 KB dated up to 15 minutes ahead; not yet checked for how long they keep kind 30078 events (see the design notes).
  */
-export const DEFAULT_RELAYS = [
-  "wss://relay.damus.io",
-  "wss://nos.lol",
-  "wss://relay.primal.net",
-  "wss://relay.nostr.net",
-];
+export const RELAYS = ["wss://nos.lol", "wss://relay.primal.net", "wss://relay.nostr.net", "wss://offchain.pub"];
+
+/**
+ * Relays taken out of RELAYS: still read from and published to for a while, so a device that hasn't updated yet and
+ * one that has still meet. Take one out of here a few weeks after it left RELAYS.
+ *   relay.damus.io: left in November 2026, failing more often than the others.
+ */
+export const RETIRED_RELAYS = ["wss://relay.damus.io"];
 
 const EVERY_MS = 60000;
 const AFTER_CHANGE_MS = 3000;
@@ -42,13 +45,22 @@ const sameKey = (a, b) => a.length === b.length && a.every((x, i) => x === b[i])
 
 export class GroupFullError extends Error {}
 
-export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, relayOptions, onSynced }) {
+export function createGroups({
+  app,
+  store,
+  makeDevice,
+  relays = RELAYS,
+  retired = RETIRED_RELAYS,
+  relayOptions,
+  onSynced,
+}) {
   const live = new Map(); // bit -> {keys, pool, stop}: stop ends its live subscription
+  const urls = [...relays, ...retired.filter((u) => !relays.includes(u))];
   async function wire(group) {
     live.get(group.bit)?.pool.close();
     live.set(group.bit, {
       keys: await groupKeys(hexToBytes(group.key)),
-      pool: new RelayPool(group.relays, relayOptions),
+      pool: new RelayPool(urls, relayOptions),
     });
   }
   return {
@@ -130,7 +142,6 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
         bit,
         key: bytesToHex(groupKey),
         device: bytesToHex(crypto.getRandomValues(new Uint8Array(8))),
-        relays: [...relays],
         epoch: 0,
         chunks: 0,
         recent: [],
@@ -253,9 +264,10 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
         look: liveLook(g),
         paused: !!g.paused,
         last: g.last,
-        relays: g.relays.map((url) => ({
+        relays: urls.map((url) => ({
           url,
           host: hostOf(url),
+          retiring: !relays.includes(url),
           ...(g.relayState?.[url] ?? { read: null, wrote: null }),
         })),
         lacks: this.device.lacks(g.bit),
