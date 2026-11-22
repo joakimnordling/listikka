@@ -37,6 +37,8 @@ export const NAMES = [
   // sync
   "server",
   "refresh-cw",
+  "pause",
+  "play",
   "scan-line",
 ];
 

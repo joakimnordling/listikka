@@ -36,6 +36,7 @@ export function render() {
 }
 
 export function syncDot() {
+  // Nothing for servers that are all paused: that's a choice made on this device, not something to fix
   const s = sync.headerState();
-  return s ? html`<span class="dot${s === "bad" ? " bad" : ""}" aria-hidden="true"></span>` : "";
+  return s && s !== "paused" ? html`<span class="dot${s === "bad" ? " bad" : ""}" aria-hidden="true"></span>` : "";
 }

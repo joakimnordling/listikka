@@ -35,7 +35,7 @@ describe("sync in Settings", () => {
   const syncNow = async (pg) => {
     await settings(pg);
     await pg.click('.nav-row[data-act="sync-now"]');
-    await pg.waitForFunction(() => !window.__listikka.sync.running && window.__listikka.sync.status().unsynced === 0);
+    await pg.waitForFunction(() => !window.__listikka.sync.running && window.__listikka.sync.status().waiting === 0);
     await pg.click('[data-act="back"]');
   };
 
@@ -137,7 +137,7 @@ describe("sync in Settings", () => {
     await A.click("#change-form button[type=submit]");
     assert.equal(await toastText(A, /Passphrase changed/), "Passphrase changed");
     await A.click('.nav-row[data-act="sync-now"]');
-    await A.waitForFunction(() => !window.__listikka.sync.running && window.__listikka.sync.status().unsynced === 0);
+    await A.waitForFunction(() => !window.__listikka.sync.running && window.__listikka.sync.status().waiting === 0);
     await A.click('[data-act="back"]');
     const C = await h.device();
     await connect(C, vault.write);
@@ -171,6 +171,37 @@ describe("sync in Settings", () => {
     await A.waitForFunction(() => window.__listikka.sync.status().servers[0]?.last?.ok, null, { timeout: 60000 });
     assert.ok((await shown(A, "")).includes("Oat milk 2 l"));
     assert.equal(await A.$eval(row("Bread"), (li) => li.classList.contains("done")), false);
+  });
+
+  it("pauses a server on this device, keeping changes here until it's resumed", async () => {
+    await settings(B);
+    await B.click(".srow");
+    await B.click('[data-act="server-pause"]');
+    assert.match(await toastText(B, /Paused/), /^Paused /);
+    assert.match(await B.textContent(".sheet"), /Paused on this device/);
+    assert.equal(await B.$('.sheet [data-act="sync-now"]'), null);
+    await B.click('[data-act="close-sheet"]');
+    assert.match(await B.textContent("#sync-summary"), /^Paused on this device\./);
+    assert.match(await B.textContent(".srow"), /Paused on this device/);
+    assert.equal(await B.$('.nav-row[data-act="sync-now"]'), null);
+    await B.click('[data-act="back"]');
+    await addItems(B, "", "Jam");
+    // a choice made here, so no dot; but Clear data still counts the change as only on this device
+    assert.equal(await B.$('[data-act="app-menu"] .dot'), null);
+    assert.deepEqual(
+      await B.evaluate(() => window.__listikka.sync.status()).then((st) => [st.waiting, st.onlyHere]),
+      [0, 1],
+    );
+    await settings(B);
+    await B.click(".srow");
+    await B.click('[data-act="server-pause"]');
+    assert.match(await toastText(B, /Resumed/), /^Resumed /);
+    await B.waitForFunction(() => {
+      const st = window.__listikka.sync.status();
+      return !st.running && st.onlyHere === 0 && st.servers[0].last?.ok;
+    });
+    await B.click('[data-act="close-sheet"]');
+    await B.click('[data-act="back"]');
   });
 
   it("stops using a server, keeping the lists on the device", async () => {

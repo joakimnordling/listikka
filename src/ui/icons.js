@@ -22,6 +22,8 @@ export const ICON_NAMES = {
   trash: "trash-2",
   server: "server",
   refresh: "refresh-cw",
+  pause: "pause",
+  play: "play",
   scan: "scan-line",
   minus: "minus",
   home: "square-plus",

@@ -111,7 +111,7 @@ sheetBodies({
   clear: () => {
     const st = sync.status();
     const synced = st.setUp && st.servers.length;
-    const lost = synced ? st.unsynced : 0;
+    const lost = synced ? st.onlyHere : 0;
     return synced
       ? html`<h2 id="sheet-title">Clear data</h2>
         <p>This removes data from this device only. Your servers keep your lists.</p>

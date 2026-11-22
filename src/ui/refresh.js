@@ -106,11 +106,11 @@ export async function refresh() {
   }
   const said = [];
   try {
-    const synced = sync.status().setUp && sync.servers.length > 0;
+    const synced = sync.status().setUp && sync.status().active > 0;
     if (synced) {
       await sync.now();
       await settle();
-      const failed = sync.status().servers.find((s) => s.last && !s.last.ok);
+      const failed = sync.status().servers.find((s) => !s.paused && s.last && !s.last.ok);
       said.push(failed ? failed.last.error || "Sync failed." : "Synced.");
     }
     if (canCheck()) {
