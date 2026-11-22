@@ -86,3 +86,14 @@
 .group-preview[hidden] {
   display: none;
 }
+
+/* A group's devices: whether each has your changes */
+.srow.device .meta span .ok {
+  color: var(--good);
+}
+.srow.device .meta span .warn {
+  color: var(--gold);
+}
+.srow.device.stale {
+  opacity: 0.55;
+}
