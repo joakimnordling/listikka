@@ -50,7 +50,8 @@
 /* Add a device: a QR code, light in every theme so cameras read it, and the code to type */
 .qr-box {
   align-self: center;
-  width: min(66vw, 240px);
+  /* small enough on a phone for the whole sheet to fit, with the code under it */
+  width: min(60vw, 30vh, 240px);
   padding: 0;
   border-radius: 12px;
   overflow: hidden;
