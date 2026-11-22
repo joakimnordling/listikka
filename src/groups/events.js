@@ -36,7 +36,15 @@ export const eventId = (e) =>
  * When to date an event that replaces one dated `last`: now, in whole seconds, but always later than `last`, as
  * relays keep the newest (and, on a tie, the one with the lowest ID).
  */
-export const nextCreatedAt = (last, now = Date.now()) => Math.max(Math.floor(now / 1000), (last ?? 0) + 1);
+export function nextCreatedAt(last, now = Date.now()) {
+  const at = Math.max(Math.floor(now / 1000), (last ?? 0) + 1);
+  // Relays refuse events dated more than about 15 minutes ahead (strfry's default). Ahead only by publishing faster
+  // than once a second, or by a clock that was wrong: then wait for the time to catch up.
+  if (at > Math.floor(now / 1000) + MAX_AHEAD) throw new EventError("Too many changes at once. Syncing again soon.");
+  return at;
+}
+/** How far ahead of now an event may be dated, in seconds. */
+export const MAX_AHEAD = 600;
 
 /** A signed event holding `body` for `device`'s event `name`. */
 export async function sealEvent(keys, { device, name, body, createdAt }) {

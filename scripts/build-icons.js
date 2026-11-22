@@ -38,6 +38,13 @@ export const NAMES = [
   "server",
   "refresh-cw",
   "pause",
+  // sharing groups
+  "users",
+  "scan-qr-code",
+  "qr-code",
+  "dices",
+  "copy",
+  "log-out",
   "play",
   "scan-line",
 ];

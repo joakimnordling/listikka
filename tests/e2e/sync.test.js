@@ -3,7 +3,18 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import { startServer } from "../sync/server.js";
-import { addItems, pullDown, row, settings, shown, standalone, startHarness, toastText } from "./harness.js";
+import {
+  addItems,
+  home,
+  pullDown,
+  row,
+  servers,
+  settings,
+  shown,
+  standalone,
+  startHarness,
+  toastText,
+} from "./harness.js";
 
 const PASS = "bilberry pie on sunday";
 const NEW = "lingonberry jam on monday";
@@ -23,7 +34,7 @@ describe("sync in Settings", () => {
   });
 
   async function connect(pg, token) {
-    await settings(pg);
+    await servers(pg);
     await pg.click('[data-act="add-server"]');
     await pg.fill("#f-url", server.url);
     await pg.fill("#f-token", token);
@@ -33,17 +44,17 @@ describe("sync in Settings", () => {
   const errorText = (pg) =>
     pg.waitForSelector(".sheet .err:not([hidden])", { timeout: 60000 }).then((e) => e.textContent());
   const syncNow = async (pg) => {
-    await settings(pg);
+    await servers(pg);
     await pg.click('.nav-row[data-act="sync-now"]');
     await pg.waitForFunction(() => !window.__listikka.sync.running && window.__listikka.sync.status().waiting === 0);
-    await pg.click('[data-act="back"]');
+    await home(pg);
   };
 
   it("Settings says sync is off, and the empty list hints at it", async () => {
     assert.match(await A.textContent(".hint"), /Set up sync/);
     await settings(A);
     assert.match(await A.textContent("#sync-summary"), /^Off\./);
-    await A.click('[data-act="back"]');
+    await home(A);
   });
 
   it("the first device chooses a passphrase; too short or differing ones are refused", async () => {
@@ -63,7 +74,7 @@ describe("sync in Settings", () => {
     assert.equal(await toastText(A, /Sync is on/), "Sync is on");
     await A.waitForSelector(".srow");
     await A.waitForFunction(() => window.__listikka.sync.status().servers[0]?.last?.ok);
-    await A.click('[data-act="back"]');
+    await home(A);
   });
 
   it("a second device is refused with a wrong passphrase, which stays typed", async () => {
@@ -81,7 +92,7 @@ describe("sync in Settings", () => {
     await B.click("#pass-form button[type=submit]");
     await B.waitForSelector(".srow", { timeout: 60000 });
     await B.waitForFunction(() => window.__listikka.sync.status().servers[0]?.last?.ok);
-    await B.click('[data-act="back"]');
+    await home(B);
     await syncNow(A);
     assert.deepEqual((await shown(A, "")).sort(), ["Bread", "Eggs", "Milk"]);
     assert.deepEqual((await shown(B, "")).sort(), ["Bread", "Eggs", "Milk"]);
@@ -125,7 +136,7 @@ describe("sync in Settings", () => {
   });
 
   it("changes the passphrase: a wrong current one is refused; a new device then needs the new one", async () => {
-    await settings(A);
+    await servers(A);
     await A.click('[data-act="change-pass"]');
     await A.fill("#p0", "not it");
     await A.fill("#p1", NEW);
@@ -138,7 +149,7 @@ describe("sync in Settings", () => {
     assert.equal(await toastText(A, /Passphrase changed/), "Passphrase changed");
     await A.click('.nav-row[data-act="sync-now"]');
     await A.waitForFunction(() => !window.__listikka.sync.running && window.__listikka.sync.status().waiting === 0);
-    await A.click('[data-act="back"]');
+    await home(A);
     const C = await h.device();
     await connect(C, vault.write);
     await C.fill("#p1", PASS);
@@ -148,7 +159,7 @@ describe("sync in Settings", () => {
     await C.click("#pass-form button[type=submit]");
     await C.waitForSelector(".srow", { timeout: 60000 });
     await C.waitForFunction(() => window.__listikka.sync.status().servers[0]?.last?.ok);
-    await C.click('[data-act="back"]');
+    await home(C);
     assert.ok((await shown(C, "")).includes("Oat milk 2 l"));
   });
 
@@ -158,10 +169,10 @@ describe("sync in Settings", () => {
     await A.evaluate(() => clearTimeout(window.__listikka.sync.timer));
     await settings(A);
     await A.click('[data-act="clear"]');
-    assert.match(await A.textContent(".sheet"), /Your servers keep your lists/);
+    assert.match(await A.textContent(".sheet"), /Your lists stay with your server\./);
     assert.match(await A.textContent(".sheet .err"), /^1 change hasn't reached any server yet/);
     await A.click('[data-act="close-sheet"]');
-    await A.click('[data-act="back"]');
+    await home(A);
     await syncNow(A);
     await settings(A);
     await A.click('[data-act="clear"]');
@@ -174,17 +185,17 @@ describe("sync in Settings", () => {
   });
 
   it("pauses a server on this device, keeping changes here until it's resumed", async () => {
-    await settings(B);
+    await servers(B);
     await B.click(".srow");
     await B.click('[data-act="server-pause"]');
     assert.match(await toastText(B, /Paused/), /^Paused /);
     assert.match(await B.textContent(".sheet"), /Paused on this device/);
     assert.equal(await B.$('.sheet [data-act="sync-now"]'), null);
     await B.click('[data-act="close-sheet"]');
-    assert.match(await B.textContent("#sync-summary"), /^Paused on this device\./);
+    assert.match(await B.textContent("#servers-summary"), /^Paused on this device\./);
     assert.match(await B.textContent(".srow"), /Paused on this device/);
     assert.equal(await B.$('.nav-row[data-act="sync-now"]'), null);
-    await B.click('[data-act="back"]');
+    await home(B);
     await addItems(B, "", "Jam");
     // a choice made here, so no dot; but Clear data still counts the change as only on this device
     assert.equal(await B.$('[data-act="app-menu"] .dot'), null);
@@ -192,7 +203,7 @@ describe("sync in Settings", () => {
       await B.evaluate(() => window.__listikka.sync.status()).then((st) => [st.waiting, st.onlyHere]),
       [0, 1],
     );
-    await settings(B);
+    await servers(B);
     await B.click(".srow");
     await B.click('[data-act="server-pause"]');
     assert.match(await toastText(B, /Resumed/), /^Resumed /);
@@ -201,17 +212,17 @@ describe("sync in Settings", () => {
       return !st.running && st.onlyHere === 0 && st.servers[0].last?.ok;
     });
     await B.click('[data-act="close-sheet"]');
-    await B.click('[data-act="back"]');
+    await home(B);
   });
 
   it("stops using a server, keeping the lists on the device", async () => {
-    await settings(B);
+    await servers(B);
     await B.click(".srow");
     await B.click('[data-act="server-remove"]');
     await B.click('[data-act="confirm-yes"]');
     assert.equal(await toastText(B, /Stopped/), "Stopped using the server");
     assert.equal(await B.$(".srow"), null);
-    await B.click('[data-act="back"]');
+    await home(B);
     assert.ok((await shown(B, "")).includes("Oat milk 2 l"));
   });
 

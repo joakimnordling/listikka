@@ -8,8 +8,29 @@ import { fileStamp, readText, saveFile } from "./files.js";
 import { svg } from "./icons.js";
 import { onActs, sheetBodies } from "./registry.js";
 import { closeSheet, openSheet } from "./sheets.js";
-import { S, save, store, sync } from "./state.js";
+import { groups, S, save, store, sync, syncState } from "./state.js";
 import { toast } from "./toast.js";
+
+const several = (n, one, many) => (n > 1 ? many : one);
+/** Where this device's lists are kept besides here: "your group and your server", say. */
+function whereFrom() {
+  const g = groups.groups.length;
+  const s = sync.vault ? sync.servers.length : 0;
+  return [g && several(g, "your group", "your groups"), s && several(s, "your server", "your servers")]
+    .filter(Boolean)
+    .join(" and ");
+}
+/** What it takes to sync again after clearing everything. */
+function needs() {
+  const g = groups.groups.length;
+  const s = sync.vault ? sync.servers.length : 0;
+  return [
+    g && several(g, "the group's code", "each group's code"),
+    s && "each server's URL and token, and your passphrase",
+  ]
+    .filter(Boolean)
+    .join(", and ");
+}
 
 export const count = (n, one) => (n ? `${n} ${n === 1 ? one : `${one}s`}` : "");
 
@@ -69,18 +90,17 @@ onActs({
     backUp();
   },
   "clear-copy": () => {
-    const n = sync.servers.length;
     openSheet({
       type: "confirm",
-      run: () => clearCopy(store.db, sync.servers),
+      run: () => clearCopy(store.db, sync.servers, groups.groups),
       title: "Clear and download again",
-      body: `Remove this device's copy of your lists, and download it again from ${n > 1 ? "your servers" : "your server"}? This can't be undone.`,
+      body: `Remove this device's copy of your lists, and download it again from ${whereFrom()}? This can't be undone.`,
       yes: "Clear and download again",
       icon: "refresh",
     });
   },
   "clear-all": () => {
-    const synced = sync.status().setUp && sync.servers.length;
+    const synced = syncState().any;
     openSheet({
       type: "confirm",
       run: () => clearEverything(store.db),
@@ -109,17 +129,17 @@ sheetBodies({
         ${what ? html`<button class="primary" data-act="restore-confirm">Restore</button><button class="quiet" data-act="close-sheet">Cancel</button>` : html`<button class="primary" data-act="close-sheet">Close</button>`}`;
   },
   clear: () => {
-    const st = sync.status();
-    const synced = st.setUp && st.servers.length;
-    const lost = synced ? st.onlyHere : 0;
+    const st = syncState();
+    const synced = st.any;
+    const lost = st.onlyHere;
     return synced
       ? html`<h2 id="sheet-title">Clear data</h2>
-        <p>This removes data from this device only. Your servers keep your lists.</p>
-        ${lost ? html`<p class="err">${lost === 1 ? "1 change hasn't" : `${lost} changes haven't`} reached any server yet and would be lost. Sync first, or back up.</p>` : ""}
+        <p>This removes data from this device only. Your lists stay with ${whereFrom()}.</p>
+        ${lost ? html`<p class="err">${lost === 1 ? "1 change hasn't" : `${lost} changes haven't`} reached ${groups.groups.length ? "any group or server" : "any server"} yet and would be lost. Sync first, or back up.</p>` : ""}
         <div class="menu"><button data-act="clear-copy">${svg("refresh")}Clear and download again</button></div>
         <p>Removes this device's copy of your lists and downloads it again. Your sync setup and settings stay.</p>
         <button class="danger" data-act="clear-all">${svg("trash", 18)}Clear everything</button>
-        <p>Also removes the sync setup and this device's settings. To sync again, you'll need each server's URL and token, and your passphrase.</p>
+        <p>Also removes the sync setup and this device's settings. To sync again, you'll need ${needs()}.</p>
         <button class="primary" data-act="close-sheet">Cancel</button>`
       : html`<h2 id="sheet-title">Clear data</h2>
         <p>Your lists are saved only on this device. Clearing removes them for good, unless you have a backup.</p>
