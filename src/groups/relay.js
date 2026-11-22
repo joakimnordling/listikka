@@ -4,6 +4,8 @@
    opened (events.js). */
 
 const TIMEOUT_MS = 10000;
+// A live subscription whose connection dropped connects again after these waits, the last one repeating
+const RECONNECT_MS = [1000, 5000, 15000, 60000];
 
 export class RelayError extends Error {}
 
@@ -18,6 +20,9 @@ export class Relay {
     this.ws = null;
     this.opening = null;
     this.waiting = new Map(); // event ID or subscription -> handler of the relay's messages about it
+    this.live = new Map(); // live subscription -> {filter: () => filter, onEvent}
+    this.retries = 0;
+    this.retryTimer = 0;
   }
 
   open() {
@@ -45,12 +50,15 @@ export class Relay {
         clearTimeout(timer);
         this.ws = ws;
         this.opening = null;
+        this.retries = 0;
+        for (const id of this.live.keys()) this.#request(id);
         resolve();
       };
       ws.onerror = () => fail(new RelayError("Can't reach it"));
       ws.onclose = () => {
         if (this.ws === ws) this.ws = null;
         for (const handle of [...this.waiting.values()]) handle(["CLOSED", null, "the connection closed"]);
+        this.#reconnect();
       };
       ws.onmessage = (m) => {
         let msg;
@@ -127,7 +135,47 @@ export class Relay {
     return events;
   }
 
+  /**
+   * Live: `onEvent(event)` for each event matching `filter()` that the relay sends, from now until unsubscribed,
+   * connecting again whenever the connection drops. `filter` is asked again on each connection, so its `since` can
+   * move on. Returns the subscription's ID.
+   */
+  subscribe(filter, onEvent) {
+    const id = `l${++subs}`;
+    this.live.set(id, { filter, onEvent });
+    if (this.ws?.readyState === 1) this.#request(id);
+    else this.open().catch(() => this.#reconnect());
+    return id;
+  }
+  unsubscribe(id) {
+    if (!this.live.delete(id)) return;
+    this.waiting.delete(id);
+    try {
+      if (this.ws?.readyState === 1) this.ws.send(JSON.stringify(["CLOSE", id]));
+    } catch {}
+  }
+  #request(id) {
+    const sub = this.live.get(id);
+    this.waiting.set(id, (msg) => {
+      if (msg[0] === "EVENT" && msg[2] && typeof msg[2] === "object") sub.onEvent(msg[2]);
+    });
+    try {
+      this.ws.send(JSON.stringify(["REQ", id, sub.filter()]));
+    } catch {}
+  }
+  #reconnect() {
+    if (!this.live.size || this.retryTimer) return;
+    const wait = RECONNECT_MS[Math.min(this.retries++, RECONNECT_MS.length - 1)];
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = 0;
+      if (this.live.size && this.ws?.readyState !== 1) this.open().catch(() => this.#reconnect());
+    }, wait);
+  }
+
   close() {
+    this.live.clear();
+    clearTimeout(this.retryTimer);
+    this.retryTimer = 0;
     this.ws?.close();
     this.ws = null;
   }
@@ -159,6 +207,14 @@ export class RelayPool {
       return { url, ok: true, message: "" };
     });
     return { events: [...byId.values()], answered: results.filter((r) => r.ok).length, results };
+  }
+
+  /** Live, from every relay: see Relay.subscribe. Returns a function that ends it. */
+  subscribe(filter, onEvent) {
+    const ids = this.relays.map((r) => r.subscribe(filter, onEvent));
+    return () => {
+      for (const [i, r] of this.relays.entries()) r.unsubscribe(ids[i]);
+    };
   }
 
   close() {

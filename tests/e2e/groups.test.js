@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import { startRelay } from "../helpers/relay.js";
-import { addItems, home, settings, shown, startHarness, toastText } from "./harness.js";
+import { addItems, home, row, settings, shown, startHarness, toastText } from "./harness.js";
 
 describe("sharing groups", () => {
   let relay, h, A, B, name, code;
@@ -55,8 +55,14 @@ describe("sharing groups", () => {
   });
 
   it("Create group opens Add a device, with a QR code and the code to type", async () => {
+    await A.evaluate(() => {
+      window.__drawn = 0;
+      new MutationObserver(() => window.__drawn++).observe(document.querySelector("#overlay"), { childList: true });
+    });
     await A.click('[data-act="create-group"]');
     await A.waitForSelector('#sheet-title:text-is("Add a device")');
+    await idle(A);
+    assert.equal(await A.evaluate(() => window.__drawn), 1, "drawn once, not again as the first sync starts and ends");
     assert.ok(await A.$(".sheet svg.qr path"));
     code = await A.textContent("#group-code");
     assert.match(code, /^([0-9A-Z]{4} ){12}[0-9A-Z]{4}\S$/);
@@ -109,6 +115,12 @@ describe("sharing groups", () => {
     assert.deepEqual(await shown(A, ""), ["Milk", "Eggs", "Bread"]);
   });
 
+  it("a change arrives on the other device as it's made, while that one is open", async () => {
+    await addItems(A, "", "Butter");
+    // on the screen, with no sync asked for on B
+    await B.waitForSelector(row("Butter"), { timeout: 15000 });
+  });
+
   it("joining a group this device is already in says so", async () => {
     await settings(B);
     assert.match(await B.textContent("#sync-summary"), /^On, in 1 group\./);
@@ -155,7 +167,7 @@ describe("sharing groups", () => {
     assert.equal(await B.$('[data-act="group"]'), null);
     assert.match(await B.textContent("#sync-summary"), /^Off\./);
     await home(B);
-    assert.deepEqual(await shown(B, ""), ["Milk", "Eggs", "Bread", "Jam"]);
+    assert.deepEqual(await shown(B, ""), ["Milk", "Eggs", "Bread", "Butter", "Jam"]);
     // it asked the relays to delete its events (NIP-09)
     await new Promise((r) => setTimeout(r, 200));
     assert.ok([...relay.events.values()].some((e) => e.kind === 5));

@@ -182,6 +182,10 @@
   font-size: 17px;
   text-align: left;
 }
+.scrim.again,
+.sheet.again {
+  animation: none;
+}
 .menu button.warn {
   color: var(--danger);
 }

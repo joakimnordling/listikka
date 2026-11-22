@@ -50,7 +50,9 @@ export function renderSheet() {
     return;
   }
   const focused = document.activeElement?.id;
-  host.innerHTML = html`<div class="scrim" data-act="scrim"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="grab"></div>${body}</div>`;
+  // The same sheet drawn again, as when sync changes what it shows, stays put instead of sliding in again
+  const again = $(".sheet", host)?.dataset.type === S.sheet.type ? " again" : "";
+  host.innerHTML = html`<div class="scrim${again}" data-act="scrim"></div><div class="sheet${again}" data-type="${S.sheet.type}" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="grab"></div>${body}</div>`;
   const keep = focused && $(`#${focused}`, host);
   const first =
     keep ||
