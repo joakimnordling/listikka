@@ -138,4 +138,28 @@ describe("syncing through Lokki's server", () => {
     await C.sync.now();
     assert.ok(C.item("Bread"));
   });
+
+  it("an edit made while a push is on its way is sent too, not taken as sent", async () => {
+    await B.sync.now();
+    await A.sync.now();
+    await A.store.change([L.addItem("Rye bread", "", A.store.items(), A.byId(), A.clock)]);
+    const make = A.sync.client.bind(A.sync);
+    A.sync.client = (url, token) => {
+      const http = make(url, token);
+      const push = http.push.bind(http);
+      http.push = async (...args) => {
+        const answer = await push(...args);
+        http.push = push;
+        // after the server took it, before this device marks it as sent
+        await A.store.change([edit(A.item("Rye bread"), { q: "2" }, A.clock)]);
+        return answer;
+      };
+      return http;
+    };
+    await A.sync.now();
+    A.sync.client = make;
+    assert.equal(A.sync.status().waiting, 0);
+    await B.sync.now();
+    assert.equal(B.item("Rye bread").q, "2");
+  });
 });
