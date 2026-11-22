@@ -20,6 +20,8 @@
     "test:sync": "node --test \"tests/sync/**/*.test.js\""
   },
   "dependencies": {
+    "@noble/curves": "2.4.0",
+    "@noble/hashes": "2.4.0",
     "fractional-indexing": "3.2.0",
     "hash-wasm": "4.13.0"
   },
