@@ -177,6 +177,7 @@ describe("a sharing group", () => {
 
   it("says so when none of its relays can be reached, and keeps the change waiting", async () => {
     const D = await device([NOWHERE]);
+    D.groups.retryDelays = []; // says so at once
     await D.add("Jam");
     const g = await D.groups.add(key);
     await run(D.groups);
@@ -184,6 +185,27 @@ describe("a sharing group", () => {
     assert.match(g.last.error, /Can't reach/);
     assert.equal(D.groups.status().failing, true);
     assert.equal(D.groups.status().groups[0].lacks, 1);
+  });
+
+  it("tries again soon when no relay answers, before saying so, as when the network is slow to come back", async () => {
+    const relay = await startRelay();
+    const url = relay.url;
+    await relay.close(); // down for now
+    const E = await device([url]);
+    E.groups.retryDelays = [50, 50];
+    const g = await E.groups.add(key);
+    await E.groups.now();
+    assert.equal(g.last, null, "the first failure isn't shown");
+    assert.equal(g.tries, 1);
+    // back up on the same port before the next try
+    const port = Number(new URL(url).port);
+    const back = await startRelay({ port });
+    await new Promise((r) => setTimeout(r, 400));
+    for (let n = 0; n < 50 && !g.last; n++) await new Promise((r) => setTimeout(r, 50));
+    assert.equal(g.last?.ok, true, g.last?.error);
+    assert.equal(g.tries, 0);
+    E.groups.close();
+    await back.close();
   });
 
   it("an edit made while an event is on its way isn't taken as published, and goes next time", async () => {
@@ -305,5 +327,24 @@ describe("a group's only device", () => {
     assert.deepEqual(again.names(), ["Milk"]);
     assert.equal(again.groups.status().groups[0].lacks, 0, "and knows the group has them");
     await relay.close();
+  });
+});
+
+describe("a relay connection", () => {
+  it("that stops answering is let go, so the next try connects again", async () => {
+    const { WebSocketServer } = await import("ws");
+    const { Relay } = await import("../../src/groups/relay.js");
+    const silent = new WebSocketServer({ host: "127.0.0.1", port: 0 }); // takes connections, answers nothing
+    await new Promise((r) => silent.once("listening", r));
+    let connections = 0;
+    silent.on("connection", () => connections++);
+    const relay = new Relay(`ws://127.0.0.1:${silent.address().port}`, { timeout: 200 });
+    await assert.rejects(relay.query({ kinds: [KIND] }), /no answer/);
+    assert.equal(relay.ws, null, "dropped");
+    await assert.rejects(relay.query({ kinds: [KIND] }), /no answer/);
+    assert.equal(connections, 2, "a new connection for the second try");
+    relay.close();
+    for (const c of silent.clients) c.terminate();
+    await new Promise((r) => silent.close(r));
   });
 });

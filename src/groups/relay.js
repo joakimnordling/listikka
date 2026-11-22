@@ -82,7 +82,12 @@ export class Relay {
         this.waiting.delete(key);
         resolve(value);
       };
-      const timer = setTimeout(() => done(onTimeout()), this.timeout);
+      const timer = setTimeout(() => {
+        // No answer in time: the connection may look open but be dead, as after the app was in the background. The
+        // next try connects again.
+        done(onTimeout());
+        this.drop();
+      }, this.timeout);
       this.waiting.set(key, (msg) => {
         const value = handle(msg);
         if (value !== undefined) done(value);
@@ -172,6 +177,25 @@ export class Relay {
     }, wait);
   }
 
+  /**
+   * Let go of the connection, keeping the live subscriptions, which connect again at once. For a connection that may
+   * have died without saying so: after the app was in the background, or when the relay stopped answering.
+   */
+  drop() {
+    const ws = this.ws;
+    if (!ws) return;
+    this.ws = null;
+    ws.onclose = ws.onmessage = ws.onerror = null;
+    try {
+      ws.close();
+    } catch {}
+    for (const handle of [...this.waiting.values()]) handle(["CLOSED", null, "the connection was dropped"]);
+    if (this.live.size) {
+      this.retries = 0;
+      this.open().catch(() => this.#reconnect());
+    }
+  }
+
   close() {
     this.live.clear();
     clearTimeout(this.retryTimer);
@@ -207,6 +231,11 @@ export class RelayPool {
       return { url, ok: true, message: "" };
     });
     return { events: [...byId.values()], answered: results.filter((r) => r.ok).length, results };
+  }
+
+  /** Every relay connects again: see Relay.drop. */
+  drop() {
+    for (const r of this.relays) r.drop();
   }
 
   /** Live, from every relay: see Relay.subscribe. Returns a function that ends it. */

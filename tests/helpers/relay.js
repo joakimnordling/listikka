@@ -28,9 +28,12 @@ function valid(e) {
   }
 }
 
-/** A relay on a free port: {url, events (Map), published (count), refuse (set true to refuse events), close()} */
-export async function startRelay() {
-  const wss = new WebSocketServer({ host: "127.0.0.1", port: 0 });
+/**
+ * A relay on a free port, or on `port`: {url, events (Map), published (count), refuse (set true to refuse events),
+ * close()}
+ */
+export async function startRelay({ port = 0 } = {}) {
+  const wss = new WebSocketServer({ host: "127.0.0.1", port });
   await new Promise((r) => wss.once("listening", r));
   const relay = {
     url: `ws://127.0.0.1:${wss.address().port}`,
