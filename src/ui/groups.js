@@ -35,6 +35,14 @@ export function groupRows() {
     );
 }
 
+/** How a relay answered this device last. */
+function relayLine(r) {
+  if (!r.read) return html`<span>Not tried yet</span>`;
+  if (!r.read.ok) return html`<span class="bad">Not answering: ${r.read.message}</span>`;
+  if (r.wrote && !r.wrote.ok) return html`<span class="bad">Refused your last change: ${r.wrote.message}</span>`;
+  return html`<span>Answering${r.wrote ? " · took your last change" : ""} · ${ago(r.read.at)}</span>`;
+}
+
 export function renderGroupPage() {
   const g = statusOf(S.group);
   if (!g) {
@@ -45,8 +53,11 @@ export function renderGroupPage() {
     <div class="scroll" id="scroll"><div class="settings">
       <div class="group-head">${picture(g.look, 64)}<span class="meta"><b>${g.name}</b>${groupLine(g)}</span></div>
       <button class="nav-row" data-act="add-device">${svg("qr")}Add a device</button>
-      ${g.paused ? "" : html`<button class="nav-row" data-act="group-sync-now" style="border-top: 0">${svg("refresh")}Sync now</button>`}
-      <button class="nav-row" data-act="group-pause" style="border-top: 0">${g.paused ? html`${svg("play")}Resume` : html`${svg("pause")}Pause on this device`}</button>
+      <h2>Relays</h2>
+      ${g.relays.map((r) => html`<div class="srow relay">${svg("relay")}<span class="meta"><b>${r.host}</b>${relayLine(r)}</span></div>`)}
+      <h2>Group</h2>
+      ${g.paused ? "" : html`<button class="nav-row" data-act="group-sync-now">${svg("refresh")}Sync now</button>`}
+      <button class="nav-row" data-act="group-pause"${g.paused ? "" : ' style="border-top: 0"'}>${g.paused ? html`${svg("play")}Resume` : html`${svg("pause")}Pause on this device`}</button>
       <button class="nav-row warn" data-act="group-leave" style="border-top: 0">${svg("leave")}Leave group</button>
       <p class="text dim" style="padding-top: 8px">The devices in a group share all your lists through public Nostr relays, end-to-end encrypted. Anyone with the group's code can read and change them. Changes arrive while Listikka is open.</p>
     </div></div>`;

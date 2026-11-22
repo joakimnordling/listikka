@@ -131,6 +131,10 @@ describe("a sharing group", () => {
     await run(C.groups);
     assert.equal(g.last.ok, true, g.last.error);
     assert.ok(C.item("Oat milk"));
+    const [up, down] = C.groups.status().groups[0].relays;
+    assert.equal(up.read.ok, true);
+    assert.equal(down.read.ok, false);
+    assert.match(down.read.message, /Can't reach it/);
     await C.add("Butter");
     await run(C.groups);
     await run(A.groups);

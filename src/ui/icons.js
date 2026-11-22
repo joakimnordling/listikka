@@ -29,6 +29,7 @@ export const ICON_NAMES = {
   dice: "dices",
   copy: "copy",
   leave: "log-out",
+  relay: "radio-tower",
   play: "play",
   scan: "scan-line",
   minus: "minus",

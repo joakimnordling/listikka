@@ -29,12 +29,12 @@ export class Relay {
         ws = new this.WebSocket(this.url);
       } catch (e) {
         this.opening = null;
-        reject(new RelayError(`Can't reach ${this.url}: ${e.message}`));
+        reject(new RelayError(`Can't reach it: ${e.message}`));
         return;
       }
       const timer = setTimeout(() => {
         ws.close();
-        fail(new RelayError(`Can't reach ${this.url}: no answer`));
+        fail(new RelayError("Can't reach it: no answer"));
       }, this.timeout);
       const fail = (error) => {
         clearTimeout(timer);
@@ -47,7 +47,7 @@ export class Relay {
         this.opening = null;
         resolve();
       };
-      ws.onerror = () => fail(new RelayError(`Can't reach ${this.url}`));
+      ws.onerror = () => fail(new RelayError("Can't reach it"));
       ws.onclose = () => {
         if (this.ws === ws) this.ws = null;
         for (const handle of [...this.waiting.values()]) handle(["CLOSED", null, "the connection closed"]);
@@ -123,7 +123,7 @@ export class Relay {
     try {
       if (this.ws?.readyState === 1) this.ws.send(JSON.stringify(["CLOSE", id]));
     } catch {}
-    if (!result.ok) throw new RelayError(`${this.url}: ${result.message}`);
+    if (!result.ok) throw new RelayError(result.message);
     return events;
   }
 
@@ -146,20 +146,19 @@ export class RelayPool {
   }
 
   /**
-   * Every event matching `filter` on the relays that answered, once each: {events, answered, errors}. Throws a
-   * RelayError when no relay answered.
+   * Every event matching `filter` on the relays that answered, once each: {events, answered, results}, results
+   * being [{url, ok, message}] for each relay. Nothing is thrown when none answers: `answered` is 0.
    */
   async query(filter) {
     const settled = await Promise.allSettled(this.relays.map((r) => r.query(filter)));
     const byId = new Map();
-    const errors = [];
-    for (const s of settled) {
-      if (s.status === "rejected") errors.push(s.reason.message);
-      else for (const e of s.value) if (typeof e.id === "string" && !byId.has(e.id)) byId.set(e.id, e);
-    }
-    const answered = settled.length - errors.length;
-    if (!answered) throw new RelayError(errors[0] ?? "No relays");
-    return { events: [...byId.values()], answered, errors };
+    const results = settled.map((s, i) => {
+      const url = this.relays[i].url;
+      if (s.status === "rejected") return { url, ok: false, message: s.reason.message };
+      for (const e of s.value) if (typeof e.id === "string" && !byId.has(e.id)) byId.set(e.id, e);
+      return { url, ok: true, message: "" };
+    });
+    return { events: [...byId.values()], answered: results.filter((r) => r.ok).length, results };
   }
 
   close() {

@@ -13,7 +13,7 @@ import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { groupKeys } from "./keys.js";
 import { groupName } from "./look.js";
 import { RelayPool } from "./relay.js";
-import { forgetEvents, syncGroup } from "./sync.js";
+import { forgetEvents, hostOf, syncGroup } from "./sync.js";
 
 export const GROUP_BITS = { from: 15, to: 30 };
 
@@ -187,6 +187,11 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
         look: liveLook(g),
         paused: !!g.paused,
         last: g.last,
+        relays: g.relays.map((url) => ({
+          url,
+          host: hostOf(url),
+          ...(g.relayState?.[url] ?? { read: null, wrote: null }),
+        })),
         lacks: this.device.lacks(g.bit),
       }));
       return {
