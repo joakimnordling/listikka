@@ -122,6 +122,18 @@ describe("the sync device", () => {
     );
   });
 
+  it("never saves an older version over an edit made after a server got it", async () => {
+    const { db, store, c, milk } = await setup();
+    const d = new ListikkaDevice(store, vault());
+    d.markHas("item", milk.id, 1); // a server got Milk; its bits are saved at the end of the round
+    const ticked = tick(milk, c);
+    await store.change([ticked]); // ticked meanwhile, which no server has
+    await d.persist();
+    const [row] = await db.all("items");
+    assert.equal(row.s, "done");
+    assert.equal(row.sb, 0);
+  });
+
   it("keeps the keyring in the vault", async () => {
     const { store } = await setup();
     const v = vault();

@@ -70,12 +70,17 @@ export function createStore(db) {
     bits(kind, id) {
       return maps[kind]?.get(id)?.sb ?? 0;
     },
-    /** Set a record's bits in memory; returns the write to save it, or null when nothing changed. */
+    /** Set a record's bits in memory; returns whether they changed. Saving them is the caller's (row()). */
     setBits(kind, id, sb) {
       const e = maps[kind]?.get(id);
-      if (!e || e.sb === sb) return null;
+      if (!e || e.sb === sb) return false;
       e.sb = sb;
-      return [STORE_OF[kind], "put", { ...e.record, sb }];
+      return true;
+    },
+    /** The write that saves a record as it is in memory now, with its bits; null when there's no such record. */
+    row(kind, id) {
+      const e = maps[kind]?.get(id);
+      return e ? [STORE_OF[kind], "put", { ...e.record, sb: e.sb }] : null;
     },
     *entries() {
       for (const kind of ["list", "item"]) for (const e of maps[kind].values()) yield e;
