@@ -45,6 +45,7 @@ export const NAMES = [
   "dices",
   "copy",
   "log-out",
+  "radio-tower",
   "play",
   "scan-line",
 ];

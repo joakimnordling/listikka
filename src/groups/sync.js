@@ -18,7 +18,8 @@
        recent   the records in this device's "recent", as "<kind>/<id>"
        at       the created_at of this device's last event of each name (events.js, nextCreatedAt)
        heads    the ID of the last event read for each d tag, so an unchanged event isn't opened again; emptied to read
-                everything again, as after clearing this device's lists */
+                everything again, as after clearing this device's lists
+       relayState  per relay, how it answered the last query (read) and the last event published (wrote) */
 
 import { schnorr } from "@noble/curves/secp256k1.js";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
@@ -28,6 +29,19 @@ import { dTag } from "./keys.js";
 import { RelayError } from "./relay.js";
 
 const keyOf = (r) => `${r.kind}/${r.id}`;
+export const hostOf = (url) => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+};
+/** How a relay answered this device last: {read: {at, ok, message}, wrote: {…}}, kept with the group. */
+function relayState(group, url) {
+  group.relayState ??= {};
+  group.relayState[url] ??= { read: null, wrote: null };
+  return group.relayState[url];
+}
 const fromKey = (k) => {
   const at = k.indexOf("/");
   return [k.slice(0, at), k.slice(at + 1)];
@@ -46,8 +60,11 @@ export async function syncGroup({ app, group, keys, device, pool, now = Date.now
 }
 
 async function pull({ app, group, keys, device, pool, report }) {
-  const { events, answered, errors } = await pool.query({ kinds: [KIND], authors: [keys.pubkey] });
-  report.relays = { answered, errors };
+  const { events, answered, results } = await pool.query({ kinds: [KIND], authors: [keys.pubkey] });
+  report.relays = { answered, errors: results.filter((r) => !r.ok).map((r) => `${hostOf(r.url)}: ${r.message}`) };
+  const at = Date.now();
+  for (const r of results) relayState(group, r.url).read = { at, ok: r.ok, message: r.message };
+  if (!answered) throw new RelayError("Can't reach any of the group's relays. Are you online?");
 
   // The newest event of each d tag that opens: relays keep only the newest, but one may send an older one, and
   // anyone can send an event with a later date that doesn't open
@@ -120,7 +137,12 @@ async function publish({ group, keys, pool, now }, name, body) {
   const createdAt = nextCreatedAt(group.at[name], now());
   const event = await sealEvent(keys, { device: group.device, name, body, createdAt });
   const { accepted, results } = await pool.publish(event);
-  if (!accepted) throw new RelayError(results.map((r) => `${r.url}: ${r.message}`).join("; ") || "No relays");
+  const at = Date.now();
+  for (const r of results) relayState(group, r.url).wrote = { at, ok: r.ok, message: r.message };
+  if (!accepted)
+    throw new RelayError(
+      `No relay took the change. ${results.map((r) => `${hostOf(r.url)}: ${r.message}`).join("; ")}`,
+    );
   group.at[name] = createdAt;
   group.heads[event.tags[0][1]] = event.id; // nothing to read in it
 }
