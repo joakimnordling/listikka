@@ -66,6 +66,27 @@ describe("sharing groups", () => {
     assert.ok(await A.$(".sheet svg.qr path"));
     code = await A.textContent("#group-code");
     assert.match(code, /^([0-9A-Z]{4} ){12}[0-9A-Z]{4}\S$/);
+    // Copy code says so on the button
+    await A.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: h.base });
+    await A.click('[data-act="copy-code"]');
+    await A.waitForSelector('[data-act="copy-code"]:has-text("Copied")');
+    assert.equal(await A.evaluate(() => navigator.clipboard.readText()), code.replaceAll(" ", ""));
+    // and when it can't, the toast shows at once where it stays, above the sheet or over it, without flying there
+    await A.evaluate(() => {
+      navigator.clipboard.writeText = () => Promise.reject(new Error("not allowed"));
+    });
+    await A.click('[data-act="copy-code"]');
+    await A.waitForSelector(".toast");
+    const bottom = () => A.$eval(".toast", (t) => getComputedStyle(t).bottom);
+    const first = await bottom();
+    await new Promise((r) => setTimeout(r, 400));
+    assert.equal(await bottom(), first, "it doesn't slide up");
+    const [top, end, vh] = await A.$eval(".toast", (t) => [
+      t.getBoundingClientRect().top,
+      t.getBoundingClientRect().bottom,
+      innerHeight,
+    ]);
+    assert.ok(top >= 0 && end <= vh, `on screen: ${top}–${end} of ${vh}`);
     await A.click('[data-act="close-sheet"]');
     assert.equal(await A.textContent("h1"), name);
     await idle(A);

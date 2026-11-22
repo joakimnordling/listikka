@@ -123,10 +123,14 @@ onActs({
   "add-device": () => {
     openSheet({ type: "add-device", bit: S.group });
   },
-  "copy-code": async () => {
+  "copy-code": async ({ b }) => {
     try {
       await navigator.clipboard.writeText(encodeCode(groups.keyOf(S.sheet.bit)));
-      toast("Code copied");
+      // said on the button itself, where the finger is
+      b.innerHTML = html`${svg("check")}Copied`.text;
+      setTimeout(() => {
+        if (b.isConnected) b.innerHTML = html`${svg("copy")}Copy code`.text;
+      }, 2000);
     } catch {
       toast("Couldn't copy. Select the code and copy it.");
     }
