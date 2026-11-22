@@ -13,12 +13,21 @@ import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { groupKeys } from "./keys.js";
 import { groupName } from "./look.js";
 import { RelayPool } from "./relay.js";
-import { syncGroup } from "./sync.js";
+import { forgetEvents, syncGroup } from "./sync.js";
 
 export const GROUP_BITS = { from: 15, to: 30 };
 
-/** The public relays a new group uses. Every event goes to all of them, so the group works while any one does. */
-export const DEFAULT_RELAYS = ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.primal.net", "wss://nostr.mom"];
+/**
+ * The public relays a new group uses. Every event goes to all of them, so the group works while any one does. Free,
+ * general relays running strfry, whose defaults take events up to 64 KB dated up to 15 minutes ahead; not yet
+ * checked for how long they keep kind 30078 events (see the design notes).
+ */
+export const DEFAULT_RELAYS = [
+  "wss://relay.damus.io",
+  "wss://nos.lol",
+  "wss://relay.primal.net",
+  "wss://relay.nostr.net",
+];
 
 const EVERY_MS = 60000;
 const AFTER_CHANGE_MS = 3000;
@@ -103,11 +112,28 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
       this.soon(0);
       return group;
     },
-    /** Stop syncing with a group on this device. What it shared stays here, and in the group. */
+    /** Pause a group on this device, or resume it (and sync soon). A round already running finishes as it is. */
+    async setPaused(bit, paused) {
+      const group = this.groups.find((g) => g.bit === bit);
+      if (!group) throw new Error(`No group with bit ${bit}.`);
+      group.paused = paused;
+      await this.device.persist([["put", { ...group }]]);
+      this.notify();
+      if (!paused) this.soon(0);
+    },
+    /**
+     * Leave a group on this device. What it shared stays here, and with the others. The relays are asked to delete
+     * this device's events in it (NIP-09), without waiting: they may or may not, and the events are encrypted anyway.
+     */
     async remove(bit) {
+      const group = this.groups.find((g) => g.bit === bit);
       this.groups = this.groups.filter((g) => g.bit !== bit);
-      live.get(bit)?.pool.close();
+      const wired = live.get(bit);
       live.delete(bit);
+      if (wired && group)
+        forgetEvents({ group, ...wired })
+          .catch(() => {})
+          .finally(() => wired.pool.close());
       this.device.clearBit(bit);
       await this.device.persist([["delete", `group:${bit}`]]);
       this.notify();
@@ -117,8 +143,11 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
       clearTimeout(this.timer);
       this.timer = setTimeout(() => this.now(), ms);
     },
+    active() {
+      return this.groups.filter((g) => !g.paused);
+    },
     async now() {
-      if (!this.groups.length) return;
+      if (!this.active().length) return;
       if (this.running) {
         this.again = true;
         return;
@@ -128,7 +157,7 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
       let applied = 0;
       try {
         for (const group of [...this.groups]) {
-          if (!live.has(group.bit)) continue; // removed meanwhile
+          if (!live.has(group.bit) || group.paused) continue; // removed meanwhile, or paused
           const { keys, pool } = live.get(group.bit);
           try {
             const report = await syncGroup({ app, group, keys, device: this.device, pool });
@@ -155,18 +184,26 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
       const groups = this.groups.map((g) => ({
         bit: g.bit,
         name: groupName(liveLook(g)),
+        look: liveLook(g),
+        paused: !!g.paused,
         last: g.last,
         lacks: this.device.lacks(g.bit),
       }));
       return {
         running: this.running,
         groups,
-        failing: groups.some((g) => g.last && !g.last.ok),
+        active: groups.filter((g) => !g.paused).length,
+        failing: groups.some((g) => !g.paused && g.last && !g.last.ok),
       };
     },
-    /** The bits of this device's groups, for counting changes no group or server has. */
-    bits() {
-      return this.groups.map((g) => g.bit);
+    /** The group's key, for its codes (code.js). */
+    keyOf(bit) {
+      const g = this.groups.find((x) => x.bit === bit);
+      return g ? hexToBytes(g.key) : null;
+    },
+    /** The bits of this device's groups (`active`: those not paused), for counting what's on no group or server. */
+    bits(active = false) {
+      return (active ? this.active() : this.groups).map((g) => g.bit);
     },
   };
 

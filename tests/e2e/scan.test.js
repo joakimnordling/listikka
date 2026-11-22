@@ -4,7 +4,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import { settings, startHarness } from "./harness.js";
+import { servers, startHarness } from "./harness.js";
 
 /**
  * A video for Chromium's fake camera (y4m: one raw frame, which it repeats) showing the QR code of
@@ -34,7 +34,7 @@ async function cameraVideo() {
 describe("scanning a pairing code", () => {
   let h, P, video;
   const open = async () => {
-    await settings(P);
+    await servers(P);
     await P.click('[data-act="add-server"]');
   };
 

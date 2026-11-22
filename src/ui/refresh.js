@@ -4,7 +4,7 @@
 import { $, html } from "./dom.js";
 import { svg } from "./icons.js";
 import { installed } from "./install.js";
-import { S, sync } from "./state.js";
+import { groups, S, sync } from "./state.js";
 import { toast } from "./toast.js";
 import { canCheck, checkForUpdate } from "./update.js";
 
@@ -91,7 +91,7 @@ document.addEventListener("touchcancel", () => {
 
 const settle = () =>
   new Promise((ok) => {
-    const wait = () => (sync.running ? setTimeout(wait, 100) : ok());
+    const wait = () => (sync.running || groups.running ? setTimeout(wait, 100) : ok());
     wait();
   });
 
@@ -106,11 +106,15 @@ export async function refresh() {
   }
   const said = [];
   try {
-    const synced = sync.status().setUp && sync.status().active > 0;
-    if (synced) {
-      await sync.now();
+    const servers = sync.status().setUp && sync.status().active > 0;
+    const inGroups = groups.status().active > 0;
+    if (servers || inGroups) {
+      await Promise.all([servers && sync.now(), inGroups && groups.now()]);
       await settle();
-      const failed = sync.status().servers.find((s) => !s.paused && s.last && !s.last.ok);
+      const failed = [
+        ...sync.status().servers.filter((s) => !s.paused),
+        ...groups.status().groups.filter((g) => !g.paused),
+      ].find((s) => s.last && !s.last.ok);
       said.push(failed ? failed.last.error || "Sync failed." : "Synced.");
     }
     if (canCheck()) {

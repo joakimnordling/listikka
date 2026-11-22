@@ -125,7 +125,9 @@ describe("group events", async () => {
   it("are dated later than the one they replace", () => {
     assert.equal(nextCreatedAt(undefined, 1700000000500), 1700000000);
     assert.equal(nextCreatedAt(1700000000, 1700000000500), 1700000001);
-    assert.equal(nextCreatedAt(1800000000, 1700000000500), 1800000001);
+    assert.equal(nextCreatedAt(1700000100, 1700000000500), 1700000101);
+    // but never so far ahead that relays refuse it
+    assert.throws(() => nextCreatedAt(1700000600, 1700000000500), EventError);
   });
   it("pack records into chunks of about 16 KB, the same way every time", () => {
     assert.deepEqual(packChunks([]), [[]]);

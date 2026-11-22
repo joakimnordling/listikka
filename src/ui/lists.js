@@ -25,7 +25,7 @@ import {
   save,
   snapshot,
   store,
-  sync,
+  syncState,
   ui,
 } from "./state.js";
 import { toast } from "./toast.js";
@@ -42,7 +42,8 @@ function installHint() {
 }
 
 export function renderMain() {
-  const label = sync.headerState() === "bad" ? "Menu, a sync server has a problem" : "Menu";
+  const st = syncState();
+  const label = st.failing ? "Menu, sync has a problem" : st.waiting ? "Menu, changes waiting to sync" : "Menu";
   const h = [
     html`<header class="top"><h1>Listikka</h1><button class="icon-btn dot-host" data-act="app-menu" aria-label="${label}">${svg("more", 24)}${syncDot()}</button></header>`,
   ];
@@ -51,7 +52,7 @@ export function renderMain() {
   for (const l of activeLists()) h.push(renderSection(l.id));
   const lists = activeLists().length;
   if (!lists) h.push(html`<button class="new-list" data-act="new-list">${svg("plus", 16)}New list</button>`);
-  if (!lists && liveItems().length < 3 && !sync.servers.length)
+  if (!lists && liveItems().length < 3 && !syncState().any)
     h.push(html`<p class="hint">Sharing with someone? Set up sync in Settings.</p>`);
   h.push(installHint());
   h.push(html`</div></div>`);

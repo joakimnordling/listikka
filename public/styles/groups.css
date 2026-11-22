@@ -1,0 +1,88 @@
+/* Sharing groups: their pictures, a group's page, New group, Add a device and Join a group. */
+.group-pic {
+  flex: none;
+  display: block;
+}
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 16px 18px;
+}
+.group-head .meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.group-head .meta b {
+  font-size: 20px;
+  font-weight: 600;
+}
+.group-head .meta span {
+  font-size: 14px;
+  color: var(--dim);
+}
+.group-head .meta span.bad,
+.nav-row.warn {
+  color: var(--danger);
+}
+
+/* New group: the picture and name it would get, large, with the dice beside them */
+.group-pick {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+}
+.group-pick b {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.group-pick .icon-btn {
+  width: 52px;
+  height: 52px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 14px;
+}
+
+/* Add a device: a QR code, light in every theme so cameras read it, and the code to type */
+.qr-box {
+  align-self: center;
+  width: min(66vw, 240px);
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.qr {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.group-code,
+.group-code-input {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  letter-spacing: 0.04em;
+}
+.sheet .group-code {
+  font-size: 16px;
+  line-height: 1.6;
+  text-align: center;
+  user-select: all;
+  -webkit-user-select: all;
+  color: var(--ink);
+}
+.field .group-code-input {
+  font-size: 15px;
+  text-transform: uppercase;
+}
+.group-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+}
+.group-preview[hidden] {
+  display: none;
+}

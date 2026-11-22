@@ -18,7 +18,11 @@ const types = {
   ".webmanifest": "application/manifest+json",
 };
 
-export async function startHarness({ args = [] } = {}) {
+/**
+ * args: for Chromium. relay: a test relay's URL (tests/helpers/relay.js) that every WebSocket the app opens goes to,
+ * whatever relay it asks for; without one, they're closed at once. Tests never reach public relays.
+ */
+export async function startHarness({ args = [], relay = null } = {}) {
   const server = createServer(async (req, res) => {
     const rel = new URL(req.url, "http://x").pathname.slice(1) || "index.html";
     const file = resolve(site, rel);
@@ -50,6 +54,7 @@ export async function startHarness({ args = [] } = {}) {
       ...(userAgent ? { userAgent } : {}),
       ...(touch ? { hasTouch: true } : {}),
     });
+    await ctx.routeWebSocket(/.*/, (ws) => toRelay(ws, relay));
     const pg = await ctx.newPage();
     pg.on("pageerror", (e) => errors.push(e.message));
     await pg.goto(`${base}/`);
@@ -62,6 +67,20 @@ export async function startHarness({ args = [] } = {}) {
     server.close();
   }
   return { base, browser, errors, device, close };
+}
+
+// A page's WebSocket, passed to the test relay
+function toRelay(ws, url) {
+  if (!url) return ws.close({ code: 1011, reason: "no relays in tests" });
+  const up = new WebSocket(url);
+  const waiting = [];
+  up.onopen = () => {
+    for (const m of waiting.splice(0)) up.send(m);
+  };
+  up.onmessage = (e) => ws.send(String(e.data));
+  up.onclose = () => ws.close();
+  ws.onMessage((m) => (up.readyState === 1 ? up.send(m) : waiting.push(m)));
+  ws.onClose(() => up.close());
 }
 
 // The app has loaded this device's copy
@@ -135,6 +154,18 @@ export async function holdAndDrag(pg, selector, to) {
 export async function settings(pg) {
   await pg.click('[data-act="app-menu"]');
   await pg.click('[data-act="a-settings"]');
+}
+
+/** Opens Settings, then its Sync servers page. */
+export async function servers(pg) {
+  await settings(pg);
+  await pg.click('[data-act="servers"]');
+}
+
+/** Back to the lists, from Settings or a page under it. */
+export async function home(pg) {
+  while (await pg.$('[data-act="to-settings"]')) await pg.click('[data-act="to-settings"]');
+  await pg.click('[data-act="back"]');
 }
 
 /** Run as a Home Screen app from now on: reloads the page with navigator.standalone set. */

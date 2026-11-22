@@ -3,11 +3,26 @@
 import * as L from "../core/lists.js";
 import { BUILD, sourceUrl } from "../core/version.js";
 import { html } from "./dom.js";
+import { groupRows } from "./groups.js";
 import { svg } from "./icons.js";
 import { onActs } from "./registry.js";
 import { render } from "./render.js";
 import { openSheet } from "./sheets.js";
-import { applyTheme, clock, getList, liveItems, openClass, removedLists, S, save, store, sync, ui } from "./state.js";
+import {
+  applyTheme,
+  clock,
+  getList,
+  groups,
+  liveItems,
+  openClass,
+  removedLists,
+  S,
+  save,
+  store,
+  sync,
+  syncState,
+  ui,
+} from "./state.js";
 import { toast } from "./toast.js";
 import { checkForUpdate } from "./update.js";
 
@@ -19,16 +34,33 @@ export const ago = (t) => {
   return new Date(t).toLocaleDateString();
 };
 
-function syncSummary() {
+/** The servers page's line on how the sync servers stand. */
+function serversSummary() {
   const st = sync.status();
   if (!st.setUp && !st.servers.length)
-    return "Off. Keep your lists on several devices through a server you choose, end-to-end encrypted.";
+    return "None. A sync server keeps your lists on several devices through a server you run or trust, end-to-end encrypted.";
   if (!st.servers.length) return "No servers. Add one to sync.";
   if (!st.active) return "Paused on this device. Changes stay here until you resume a server.";
   if (st.failing) return "A server has a problem. Tap it to see.";
   if (st.waiting) return `${st.waiting} ${st.waiting === 1 ? "change" : "changes"} waiting to sync.`;
   const n = st.servers.length;
   return `On, with ${n} ${n === 1 ? "server" : "servers"}. End-to-end encrypted.`;
+}
+
+/** Settings' line on how syncing stands, groups and servers together. */
+function syncSummary() {
+  const st = syncState();
+  const g = groups.groups.length;
+  if (!st.any) return "Off. Sync your lists between devices, end-to-end encrypted, through public Nostr relays.";
+  if (st.paused) return "Paused on this device. Changes stay here until you resume.";
+  if (st.failing)
+    return g ? "Something has a problem. Tap it to see." : "A sync server has a problem. Tap Sync servers to see.";
+  if (st.waiting) return `${st.waiting} ${st.waiting === 1 ? "change" : "changes"} waiting to sync.`;
+  if (!g) {
+    const n = sync.servers.length;
+    return `On, with ${n} sync ${n === 1 ? "server" : "servers"}. End-to-end encrypted.`;
+  }
+  return `On, in ${g === 1 ? "1 group" : `${g} groups`}. End-to-end encrypted, through public Nostr relays.`;
 }
 
 function serverLine(s) {
@@ -39,6 +71,31 @@ function serverLine(s) {
   return html`<span>Synced ${ago(s.last.at)}${s.lacks ? ` · ${s.lacks} waiting` : ""}</span>`;
 }
 
+/** What the Sync servers row says: "None", "2", "1 · paused". */
+function serversCount() {
+  const st = sync.status();
+  const n = st.servers.length;
+  if (!n) return "None";
+  const paused = n - st.active;
+  return paused ? `${n} · ${paused === n ? "paused" : `${paused} paused`}` : String(n);
+}
+
+export function renderServers() {
+  const st = sync.status();
+  const servers = st.servers.map(
+    (s) =>
+      html`<button class="srow" data-act="server" data-bit="${s.bit}">${svg("server")}<span class="meta"><b>${s.name}</b>${serverLine(s)}</span>${svg("chevRight", 18)}</button>`,
+  );
+  return html`<header class="top sub"><button class="icon-btn" data-act="to-settings" aria-label="Back to Settings">${svg("back", 22)}</button><h1>Sync servers</h1></header>
+    <div class="scroll" id="scroll"><div class="settings">
+      <p class="text" id="servers-summary">${serversSummary()}</p>
+      ${servers}
+      <button class="nav-row" data-act="add-server">${svg("plus")}Add sync server</button>
+      ${st.active ? html`<button class="nav-row" data-act="sync-now" style="border-top: 0">${svg("refresh")}Sync now</button>` : ""}
+      ${st.setUp ? html`<button class="nav-row" data-act="change-pass" style="border-top: 0">${svg("pencil")}Change passphrase</button>` : ""}
+    </div></div>`;
+}
+
 export function renderSettings() {
   const themes = [
     ["auto", "Automatic"],
@@ -47,11 +104,6 @@ export function renderSettings() {
     ["darker", "Darker"],
   ];
   const n = removedLists().length;
-  const st = sync.status();
-  const servers = st.servers.map(
-    (s) =>
-      html`<button class="srow" data-act="server" data-bit="${s.bit}">${svg("server")}<span class="meta"><b>${s.name}</b>${serverLine(s)}</span>${svg("chevRight", 18)}</button>`,
-  );
   return html`<header class="top sub"><button class="icon-btn" data-act="back" aria-label="Back">${svg("back", 22)}</button><h1>Settings</h1></header>
     <div class="scroll" id="scroll"><div class="settings">
       <h2>Theme</h2>
@@ -59,10 +111,10 @@ export function renderSettings() {
       <p class="text dim" style="padding-top: 8px">Dark is the default. Automatic follows the device: Light, or Dark when the device is in dark mode.</p>
       <h2>Sync</h2>
       <p class="text" id="sync-summary">${syncSummary()}</p>
-      ${servers}
-      <button class="nav-row" data-act="add-server">${svg("plus")}Add server</button>
-      ${st.active ? html`<button class="nav-row" data-act="sync-now" style="border-top: 0">${svg("refresh")}Sync now</button>` : ""}
-      ${st.setUp ? html`<button class="nav-row" data-act="change-pass" style="border-top: 0">${svg("pencil")}Change passphrase</button>` : ""}
+      ${groupRows()}
+      <button class="nav-row" data-act="new-group">${svg("users")}New group</button>
+      <button class="nav-row" data-act="join-group" style="border-top: 0">${svg("join")}Join a group</button>
+      <button class="nav-row" data-act="servers" style="border-top: 0">${svg("server")}Sync servers<span class="count">${serversCount()}</span>${svg("chevRight", 18)}</button>
       <h2>Lists</h2>
       <button class="nav-row" data-act="removed-lists">${svg("broom")}Removed lists<span class="count">${n}</span>${svg("chevRight", 18)}</button>
       <h2>Data</h2>
@@ -103,6 +155,10 @@ onActs({
   "to-settings": () => {
     S.view = "settings";
     S.swipeOpen = null;
+    render();
+  },
+  servers: () => {
+    S.view = "servers";
     render();
   },
   "removed-lists": () => {

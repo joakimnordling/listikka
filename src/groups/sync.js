@@ -19,8 +19,12 @@
        at       the created_at of this device's last event of each name (events.js, nextCreatedAt)
        heads    the ID of the last event read for each d tag, so an unchanged event isn't opened again; emptied to read
                 everything again, as after clearing this device's lists */
+
+import { schnorr } from "@noble/curves/secp256k1.js";
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { canonicalJson, sameRecord } from "../../vendor/lokki-sync/crypto.js";
-import { CHUNK_TARGET, EventError, KIND, nextCreatedAt, openEvent, packChunks, sealEvent } from "./events.js";
+import { CHUNK_TARGET, EventError, eventId, KIND, nextCreatedAt, openEvent, packChunks, sealEvent } from "./events.js";
+import { dTag } from "./keys.js";
 import { RelayError } from "./relay.js";
 
 const keyOf = (r) => `${r.kind}/${r.id}`;
@@ -156,4 +160,19 @@ async function push({ group, keys, device, pool, now, report }) {
   markSent(device, group, all);
   report.pushed += pending.length;
   report.compacted = true;
+}
+
+/**
+ * Ask the relays to delete this device's events in a group (NIP-09: a kind 5 event naming them), when leaving it.
+ * Returns how many relays took the request.
+ */
+export async function forgetEvents({ group, keys, pool, now = Date.now }) {
+  const names = ["recent", ...Array.from({ length: group.chunks }, (_, n) => `chunk/${n}`)];
+  const tags = [];
+  for (const name of names) tags.push(["a", `${KIND}:${keys.pubkey}:${await dTag(keys, group.device, name)}`]);
+  tags.push(["k", String(KIND)]);
+  const event = { kind: 5, pubkey: keys.pubkey, created_at: Math.floor(now() / 1000), tags, content: "" };
+  event.id = eventId(event);
+  event.sig = bytesToHex(schnorr.sign(hexToBytes(event.id), keys.secret));
+  return (await pool.publish(event)).accepted;
 }
