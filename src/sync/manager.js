@@ -1,10 +1,12 @@
 /* Listikka's sync: the shared manager (vendor/lokki-sync/manager.js) with Listikka's settings, its device and
-   IndexedDB's "sync" store. */
+   IndexedDB's "sync" store. Servers get records' server bits 0 to 14; 15 to 30 are kept for sharing groups. */
 import { createSyncManager } from "../../vendor/lokki-sync/manager.js";
 import { LISTIKKA } from "./app.js";
 import { ListikkaDevice } from "./device.js";
 
 export { hostOf } from "../../vendor/lokki-sync/manager.js";
+
+export const SERVER_BITS = { from: 0, to: 14 };
 
 export const OTHER_APP = "This server's vault is for another app, not Listikka. Use another token or server.";
 
@@ -18,4 +20,5 @@ export const createSync = (store, { onSynced = () => store.changed() } = {}) =>
     makeDevice: (vault, unreadable) => new ListikkaDevice(store, vault, unreadable),
     words: { otherApp: OTHER_APP },
     onSynced,
+    bits: SERVER_BITS,
   });

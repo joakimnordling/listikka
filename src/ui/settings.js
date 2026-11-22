@@ -24,13 +24,15 @@ function syncSummary() {
   if (!st.setUp && !st.servers.length)
     return "Off. Keep your lists on several devices through a server you choose, end-to-end encrypted.";
   if (!st.servers.length) return "No servers. Add one to sync.";
+  if (!st.active) return "Paused on this device. Changes stay here until you resume a server.";
   if (st.failing) return "A server has a problem. Tap it to see.";
-  if (st.unsynced) return `${st.unsynced} ${st.unsynced === 1 ? "change" : "changes"} waiting to sync.`;
+  if (st.waiting) return `${st.waiting} ${st.waiting === 1 ? "change" : "changes"} waiting to sync.`;
   const n = st.servers.length;
   return `On, with ${n} ${n === 1 ? "server" : "servers"}. End-to-end encrypted.`;
 }
 
 function serverLine(s) {
+  if (s.paused) return html`<span>Paused on this device</span>`;
   if (sync.running) return html`<span>Syncing…</span>`;
   if (!s.last) return html`<span>Not synced yet</span>`;
   if (!s.last.ok) return html`<span class="bad">${s.last.error || "Sync failed"}</span>`;
@@ -59,7 +61,7 @@ export function renderSettings() {
       <p class="text" id="sync-summary">${syncSummary()}</p>
       ${servers}
       <button class="nav-row" data-act="add-server">${svg("plus")}Add server</button>
-      ${st.servers.length ? html`<button class="nav-row" data-act="sync-now" style="border-top: 0">${svg("refresh")}Sync now</button>` : ""}
+      ${st.active ? html`<button class="nav-row" data-act="sync-now" style="border-top: 0">${svg("refresh")}Sync now</button>` : ""}
       ${st.setUp ? html`<button class="nav-row" data-act="change-pass" style="border-top: 0">${svg("pencil")}Change passphrase</button>` : ""}
       <h2>Lists</h2>
       <button class="nav-row" data-act="removed-lists">${svg("broom")}Removed lists<span class="count">${n}</span>${svg("chevRight", 18)}</button>

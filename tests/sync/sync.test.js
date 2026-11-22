@@ -54,7 +54,11 @@ describe("syncing through Lokki's server", () => {
     for (const name of ["Milk", "Eggs"])
       await A.store.change([L.addItem(name, lidl.id, A.store.items(), A.byId(), A.clock)]);
     await join(A, server.url, vault.write);
-    assert.equal(A.sync.status().unsynced, 0);
+    assert.equal(A.sync.status().onlyHere, 0);
+    assert.ok(
+      A.sync.servers.every((s) => s.bit <= 14),
+      "servers keep to bits 0 to 14",
+    );
     assert.ok(A.sync.status().servers[0].last.ok);
   });
 

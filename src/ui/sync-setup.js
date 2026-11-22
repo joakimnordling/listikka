@@ -131,6 +131,11 @@ onActs({
   "change-pass": () => {
     openSheet({ type: "change-pass" });
   },
+  "server-pause": () => {
+    const s = sync.servers.find((x) => x.bit === S.sheet.bit);
+    const paused = !s.paused;
+    sync.setPaused(s.bit, paused).then(() => toast(paused ? `Paused ${s.name}` : `Resumed ${s.name}`));
+  },
   "server-remove": () => {
     const s = sync.servers.find((x) => x.bit === S.sheet.bit);
     openSheet({
@@ -188,9 +193,17 @@ sheetBodies({
   server: () => {
     const s = sync.status().servers.find((x) => x.bit === S.sheet.bit);
     if (!s) return null;
+    const state = s.paused
+      ? "Paused on this device: it doesn't sync with this server until you resume it."
+      : s.last
+        ? s.last.ok
+          ? `Synced ${ago(s.last.at)}.`
+          : s.last.error || "Sync failed."
+        : "Not synced yet.";
     return html`<h2 id="sheet-title">${s.name}</h2>
-      <p>${s.url}<br>${s.last ? (s.last.ok ? `Synced ${ago(s.last.at)}.` : s.last.error || "Sync failed.") : "Not synced yet."}${s.lacks ? ` ${s.lacks} ${s.lacks === 1 ? "change" : "changes"} waiting.` : ""}</p>
-      <div class="menu"><button data-act="sync-now">${svg("refresh")}Sync now</button>
+      <p>${s.url}<br>${state}${s.lacks ? ` ${s.lacks} ${s.lacks === 1 ? "change" : "changes"} waiting.` : ""}</p>
+      <div class="menu">${s.paused ? "" : html`<button data-act="sync-now">${svg("refresh")}Sync now</button>`}
+      <button data-act="server-pause">${s.paused ? html`${svg("play")}Resume` : html`${svg("pause")}Pause on this device`}</button>
       <button class="warn" data-act="server-remove">${svg("x")}Stop using this server</button></div>
       <button class="primary" data-act="close-sheet">Done</button>`;
   },
