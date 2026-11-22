@@ -8,7 +8,7 @@ import { edit } from "../../src/core/records.js";
 import { createMemoryDb } from "../../src/data/idb.js";
 import { createStore } from "../../src/data/store.js";
 import { KIND } from "../../src/groups/events.js";
-import { newGroupKey } from "../../src/groups/keys.js";
+import { dTag, groupKeys, newGroupKey } from "../../src/groups/keys.js";
 import { createGroups, GROUP_BITS } from "../../src/groups/manager.js";
 import { LISTIKKA } from "../../src/sync/app.js";
 import { ListikkaDevice } from "../../src/sync/device.js";
@@ -123,6 +123,40 @@ describe("a sharing group", () => {
     await rounds([A, B]);
     assert.equal(one.published, published);
     assert.equal(A.groups.groups[0].last.report.pulled, 0);
+  });
+
+  it("each device's status says who it is, and whether it has all of another's changes", async () => {
+    await A.groups.setMe({ label: "Anna's phone", kind: "phone" });
+    await B.groups.setMe({ label: "Laptop", kind: "computer" });
+    await rounds([A, B, A]);
+    const [fromA] = A.groups.status().groups[0].devices;
+    assert.equal(fromA.label, "Laptop");
+    assert.equal(fromA.kind, "computer");
+    assert.ok(Math.abs(fromA.online - Date.now() / 1000) < 60);
+    assert.deepEqual([fromA.hasAllMine, fromA.haveAllTheirs], [true, true]);
+
+    // A change on A that B hasn't read: B's status can't say it has it
+    await A.add("Salt");
+    await rounds([A]);
+    assert.equal(A.groups.status().groups[0].devices[0].hasAllMine, false);
+    await rounds([B, A]);
+    assert.equal(A.groups.status().groups[0].devices[0].hasAllMine, true);
+
+    // A change on B whose event every relay lost: B's status says it published it, so A knows it lacks it
+    await B.add("Pepper");
+    await rounds([B]);
+    const keys = await groupKeys(key);
+    const d = await dTag(keys, B.groups.groups[0].device, "recent");
+    for (const r of [one, two]) r.events.delete(`${KIND}:${keys.pubkey}:${d}`);
+    await rounds([A]);
+    assert.equal(A.groups.status().groups[0].devices[0].haveAllTheirs, false);
+    assert.ok(!A.item("Pepper"));
+    // B publishes it again on its next change
+    await B.add("Paprika");
+    await rounds([B, A]);
+    assert.ok(A.item("Pepper"));
+    assert.equal(A.groups.status().groups[0].devices[0].haveAllTheirs, true);
+    assert.equal(B.groups.status().groups[0].devices[0].label, "Anna's phone");
   });
 
   it("keeps working while one of its relays can't be reached", async () => {

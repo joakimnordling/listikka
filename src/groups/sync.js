@@ -19,7 +19,16 @@
        at       the created_at of this device's last event of each name (events.js, nextCreatedAt)
        heads    the ID of the last event read for each d tag, so an unchanged event isn't opened again; emptied to read
                 everything again, as after clearing this device's lists
-       relayState  per relay, how it answered the last query (read) and the last event published (wrote) */
+       relayState  per relay, how it answered the last query (read) and the last event published (wrote)
+       own      the version of each of this device's events as it published them: {name: version}
+       seen     the version of each other device's events read here: {device: {name: version}}
+       peers    the other devices' last status: {device: {label, kind, online, own, has}}
+       statusSig  what this device's last status said, but when: published again when it changes
+
+   A version is the start of an event's ID, which differs for every event published. Each device's status event says
+   which versions of its own events it published last (own), and which of the others' it has read (has). So a device
+   has all of yours when its has[you] matches your own, and you have all of its when your seen[it] matches its own:
+   exact comparisons, not guesses from times. Status events themselves are left out of both. */
 
 import { schnorr } from "@noble/curves/secp256k1.js";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
@@ -47,16 +56,36 @@ const fromKey = (k) => {
   return [k.slice(0, at), k.slice(at + 1)];
 };
 const size = (records) => new TextEncoder().encode(canonicalJson(records)).length;
+const version = (event) => event.id.slice(0, 16);
+// A status is published again after this long even when nothing in it changed, so others see when it was online
+const STATUS_EVERY_S = 15 * 60;
 
 /**
  * Sync one group. `device` is Listikka's sync device (src/sync/device.js); `pool` the group's relays (relay.js);
- * `keys` its keys (keys.js). Returns a report: {pulled, applied, pushed, compacted, unreadable, newer, relays}.
+ * `keys` its keys (keys.js); `me` what this device's status says of it: {label, kind}. Returns a report: {pulled,
+ * applied, pushed, compacted, unreadable, newer, relays}.
  */
-export async function syncGroup({ app, group, keys, device, pool, now = Date.now }) {
+export async function syncGroup({ app, group, keys, device, pool, me = {}, now = Date.now }) {
   const report = { pulled: 0, applied: 0, pushed: 0, compacted: false, unreadable: 0, newer: 0, relays: null };
+  group.own ??= {};
+  group.seen ??= {};
+  group.peers ??= {};
   await pull({ app, group, keys, device, pool, report });
   await push({ group, keys, device, pool, now, report });
+  await status({ group, keys, pool, me, now });
   return report;
+}
+
+/** Publish this device's status, when what it says changed or it's due. */
+async function status({ group, keys, pool, me, now }) {
+  const has = {};
+  for (const [other, names] of Object.entries(group.seen)) if (other !== group.device) has[other] = names;
+  const content = { label: String(me.label ?? ""), kind: String(me.kind ?? ""), own: group.own, has };
+  const sig = canonicalJson(content);
+  const due = !group.at.status || Math.floor(now() / 1000) - group.at.status >= STATUS_EVERY_S;
+  if (sig === group.statusSig && !due) return;
+  await publish({ group, keys, pool, now }, "status", { ...content, online: Math.floor(now() / 1000) });
+  group.statusSig = sig;
 }
 
 async function pull({ app, group, keys, device, pool, report }) {
@@ -91,6 +120,8 @@ async function pull({ app, group, keys, device, pool, report }) {
       // This device's own events are read too: what they hold is in the group, and after this device's lists were
       // cleared, they come back from them. And the next one it publishes must be later.
       if (body.device === group.device) group.at[body.name] = Math.max(group.at[body.name] ?? 0, e.created_at);
+      else if (body.name === "status") group.peers[body.device] = peer(body);
+      else group.seen[body.device] = { ...group.seen[body.device], [body.name]: version(e) };
       read.push({ d, id: e.id, body });
       break;
     }
@@ -145,6 +176,34 @@ async function publish({ group, keys, pool, now }, name, body) {
     );
   group.at[name] = createdAt;
   group.heads[event.tags[0][1]] = event.id; // nothing to read in it
+  if (name !== "status") group.own[name] = version(event);
+}
+
+/** Another device's status, as far as it makes sense. */
+function peer(body) {
+  const names = (o) =>
+    Object.fromEntries(Object.entries(o && typeof o === "object" ? o : {}).filter(([, v]) => typeof v === "string"));
+  const has = {};
+  for (const [d, o] of Object.entries(body.has && typeof body.has === "object" ? body.has : {})) has[d] = names(o);
+  return {
+    label: typeof body.label === "string" ? body.label.slice(0, 60) : "",
+    kind: typeof body.kind === "string" ? body.kind : "",
+    online: Number.isInteger(body.online) ? body.online : 0,
+    own: names(body.own),
+    has,
+  };
+}
+
+/** What this device knows of another's: whether it has all of this device's changes, and this one all of its. */
+export function compare(group, other) {
+  const p = group.peers?.[other];
+  if (!p) return null;
+  const mine = group.own ?? {};
+  const theirs = p.has[group.device] ?? {};
+  return {
+    hasAllMine: Object.entries(mine).every(([name, v]) => theirs[name] === v),
+    haveAllTheirs: Object.entries(p.own).every(([name, v]) => group.seen?.[other]?.[name] === v),
+  };
 }
 
 /** Mark records as in the group, if they're still the version that was published. */
@@ -189,7 +248,7 @@ async function push({ group, keys, device, pool, now, report }) {
  * Returns how many relays took the request.
  */
 export async function forgetEvents({ group, keys, pool, now = Date.now }) {
-  const names = ["recent", ...Array.from({ length: group.chunks }, (_, n) => `chunk/${n}`)];
+  const names = ["recent", "status", ...Array.from({ length: group.chunks }, (_, n) => `chunk/${n}`)];
   const tags = [];
   for (const name of names) tags.push(["a", `${KIND}:${keys.pubkey}:${await dTag(keys, group.device, name)}`]);
   tags.push(["k", String(KIND)]);

@@ -14,7 +14,7 @@ import { KIND } from "./events.js";
 import { groupKeys } from "./keys.js";
 import { groupName } from "./look.js";
 import { RelayPool } from "./relay.js";
-import { forgetEvents, hostOf, syncGroup } from "./sync.js";
+import { compare, forgetEvents, hostOf, syncGroup } from "./sync.js";
 
 export const GROUP_BITS = { from: 15, to: 30 };
 
@@ -50,6 +50,7 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
   }
   return {
     groups: [],
+    me: null, // this device, as its status shows it to the others: {label, kind}; null until named
     running: false,
     again: false,
     timer: 0,
@@ -59,6 +60,8 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
     async load() {
       const rows = await store.all();
       this.groups = rows.filter((r) => r.k.startsWith("group:")).sort((a, b) => a.bit - b.bit);
+      const me = rows.find((r) => r.k === "me");
+      this.me = me ? { label: me.label, kind: me.kind } : null;
       this.device = makeDevice();
       for (const g of this.groups) await wire(g);
     },
@@ -169,6 +172,14 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
       this.notify();
     },
 
+    /** Name this device, for every group's other devices: {label, kind} ("phone", "tablet" or "computer"). */
+    async setMe(me) {
+      this.me = { label: String(me.label).trim().slice(0, 60), kind: me.kind ?? "" };
+      await store.write([["put", { k: "me", ...this.me }]]);
+      this.notify();
+      this.soon(0);
+    },
+
     /** Close every group's connections (in tests). */
     close() {
       this.listening = false;
@@ -197,7 +208,7 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
           if (!live.has(group.bit) || group.paused) continue; // removed meanwhile, or paused
           const { keys, pool } = live.get(group.bit);
           try {
-            const report = await syncGroup({ app, group, keys, device: this.device, pool });
+            const report = await syncGroup({ app, group, keys, device: this.device, pool, me: this.me ?? {} });
             applied += report.applied;
             group.last = { at: Date.now(), ok: true, error: null, report };
           } catch (error) {
@@ -230,6 +241,7 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
           ...(g.relayState?.[url] ?? { read: null, wrote: null }),
         })),
         lacks: this.device.lacks(g.bit),
+        devices: devicesOf(g),
       }));
       return {
         running: this.running,
@@ -248,6 +260,17 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
       return (active ? this.active() : this.groups).map((g) => g.bit);
     },
   };
+
+  /**
+   * A group's other devices, as their status says, the most recently online first: {id, label, kind, online,
+   * hasAllMine, haveAllTheirs}.
+   */
+  function devicesOf(g) {
+    return Object.entries(g.peers ?? {})
+      .filter(([id]) => id !== g.device)
+      .map(([id, p]) => ({ id, label: p.label, kind: p.kind, online: p.online, ...compare(g, id) }))
+      .sort((a, b) => b.online - a.online);
+  }
 
   function liveLook(g) {
     return live.get(g.bit).keys.look;

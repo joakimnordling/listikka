@@ -52,6 +52,13 @@ describe("sharing groups", () => {
     }
     assert.notEqual(other, first);
     name = other;
+    // the first time, this device's name too, guessed from the browser; what's typed stays through the dice
+    assert.match(await A.inputValue("#f-me"), /\S/);
+    await A.fill("#f-me", "Desk");
+    await A.click('[data-act="reroll"]');
+    await A.waitForFunction((was) => document.querySelector("#new-group-name").textContent !== was, name);
+    name = await A.textContent("#new-group-name");
+    assert.equal(await A.inputValue("#f-me"), "Desk");
   });
 
   it("Create group opens Add a device, with a QR code and the code to type", async () => {
@@ -118,6 +125,7 @@ describe("sharing groups", () => {
     await B.fill("#f-code", code.toLowerCase().replaceAll(" ", "-"));
     await B.waitForSelector("#join-preview:not([hidden])");
     assert.equal(await B.textContent("#join-preview"), name);
+    await B.fill("#f-me", "Pocket");
     await B.click("#join-form button[type=submit]");
     assert.equal(await toastText(B, /Joined/), `Joined ${name}`);
     await B.waitForSelector(`h1:text-is("${name}")`);
@@ -140,6 +148,33 @@ describe("sharing groups", () => {
     await addItems(A, "", "Butter");
     // on the screen, with no sync asked for on B
     await B.waitForSelector(row("Butter"), { timeout: 15000 });
+  });
+
+  it("a group's page lists its devices, and whether each has your changes", async () => {
+    const devices = (pg) =>
+      pg.$$eval(".srow.device .meta", (els) =>
+        els.map((e) => [e.querySelector("b").textContent, e.querySelector("span").textContent]),
+      );
+    await settings(A);
+    await A.click('[data-act="group"]');
+    await A.waitForFunction(() => document.querySelectorAll(".srow.device").length === 2);
+    const rows = await devices(A);
+    assert.deepEqual(rows[0], ["Desk", "This device"]);
+    assert.equal(rows[1][0], "Pocket");
+    assert.match(rows[1][1], /^Online just now · has all your changes$/);
+    // renaming this device: the other one sees the new name
+    await A.click('[data-act="rename-me"]');
+    await A.fill("#f-me", "Desktop");
+    await A.click("#me-form button[type=submit]");
+    assert.equal(await toastText(A, /Renamed/), "Renamed this device");
+    assert.equal((await devices(A))[0][0], "Desktop");
+    await home(A);
+    await settings(B);
+    await B.click('[data-act="group"]');
+    await B.waitForFunction(() =>
+      [...document.querySelectorAll(".srow.device b")].some((b) => b.textContent === "Desktop"),
+    );
+    await home(B);
   });
 
   it("joining a group this device is already in says so", async () => {

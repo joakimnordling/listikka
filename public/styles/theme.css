@@ -40,6 +40,7 @@
   --danger-bg: #b3261e;
   --ok: #3f7d4a;
   --ok-fg: #ffffff;
+  --good: #2f6b3a; /* text saying something is fine */
   --toast: #191a33;
   --toast-fg: #ffffff;
   --toast-accent: #c9cbff;
@@ -69,6 +70,7 @@
     --danger-bg: #b02a3c;
     --ok: #3a7a46;
     --ok-fg: #ffffff;
+    --good: #8fd19e; /* text saying something is fine */
     --toast: #ffffff;
     --toast-fg: #20225f;
     --toast-accent: #4347b0;
@@ -98,6 +100,7 @@
   --danger-bg: #b02a3c;
   --ok: #3a7a46;
   --ok-fg: #ffffff;
+  --good: #8fd19e; /* text saying something is fine */
   --toast: #ffffff;
   --toast-fg: #20225f;
   --toast-accent: #4347b0;
@@ -127,6 +130,7 @@
   --danger-bg: #b3261e;
   --ok: #3f7d4a;
   --ok-fg: #ffffff;
+  --good: #2f6b3a; /* text saying something is fine */
   --toast: #191a33;
   --toast-fg: #ffffff;
   --toast-accent: #c9cbff;
@@ -155,6 +159,7 @@
   --danger-bg: #b02a3c;
   --ok: #3a7a46;
   --ok-fg: #ffffff;
+  --good: #8fd19e; /* text saying something is fine */
   --toast: #ffffff;
   --toast-fg: #20225f;
   --toast-accent: #4347b0;
@@ -183,6 +188,7 @@
   --danger-bg: #a8283a;
   --ok: #356f40;
   --ok-fg: #ffffff;
+  --good: #8fd19e; /* text saying something is fine */
   --toast: #e9eaff;
   --toast-fg: #11122a;
   --toast-accent: #3b3fa3;

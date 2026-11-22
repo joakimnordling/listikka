@@ -43,6 +43,57 @@ function relayLine(r) {
   return html`<span>Answering${r.wrote ? " · took your last change" : ""} · ${ago(r.read.at)}</span>`;
 }
 
+/** What this device probably is, from its browser: a name to start from, and its kind for the devices' icons. */
+export function guessMe(ua = navigator.userAgent, touch = navigator.maxTouchPoints > 1) {
+  if (/iPad/.test(ua) || (/Macintosh/.test(ua) && touch)) return { label: "iPad", kind: "tablet" };
+  if (/iPhone|iPod/.test(ua)) return { label: "iPhone", kind: "phone" };
+  if (/Android/.test(ua))
+    return /Mobile/.test(ua) ? { label: "Android phone", kind: "phone" } : { label: "Android tablet", kind: "tablet" };
+  if (/Macintosh|Mac OS X/.test(ua)) return { label: "Mac", kind: "computer" };
+  if (/Windows/.test(ua)) return { label: "Windows PC", kind: "computer" };
+  if (/CrOS/.test(ua)) return { label: "Chromebook", kind: "computer" };
+  if (/Linux/.test(ua)) return { label: "Linux computer", kind: "computer" };
+  return { label: "Computer", kind: "computer" };
+}
+const KIND_ICON = { phone: "phone", tablet: "tablet", computer: "computer" };
+const deviceIcon = (kind) => svg(KIND_ICON[kind] ?? "phone");
+
+/** The first time, New group and Join a group also ask for this device's name, shown to the group's others. */
+function meField() {
+  if (groups.me) return "";
+  return html`<label class="field">This device's name<input id="f-me" value="${S.sheet.me ?? guessMe().label}" maxlength="60" autocomplete="off"></label>`;
+}
+async function saveMe() {
+  if (groups.me) return;
+  const label = ($("#f-me")?.value ?? S.sheet.me ?? "").trim();
+  await groups.setMe({ ...guessMe(), ...(label ? { label } : {}) });
+}
+
+const DAY = 86400;
+/** Another device's line: when it was online, and whether it has your changes and you its. */
+function deviceLine(d) {
+  const now = Date.now() / 1000;
+  if (now - d.online > 60 * DAY)
+    return html`<span>Not seen since ${new Date(d.online * 1000).toLocaleDateString()}</span>`;
+  const mine = d.hasAllMine
+    ? html`<span class="ok">has all your changes</span>`
+    : html`<span class="warn">missing some of your changes</span>`;
+  const theirs = d.haveAllTheirs ? "" : html` · <span class="warn">some of its changes haven't arrived</span>`;
+  return html`<span>Online ${ago(d.online * 1000)} · ${mine}${theirs}</span>`;
+}
+
+function devicesSection(g) {
+  const me = groups.me ?? guessMe();
+  const rows = [
+    html`<div class="srow device">${deviceIcon(me.kind)}<span class="meta"><b>${me.label}</b><span>This device</span></span><button class="icon-btn" data-act="rename-me" aria-label="Rename this device">${svg("pencil", 20)}</button></div>`,
+    ...g.devices.map(
+      (d) =>
+        html`<div class="srow device${Date.now() / 1000 - d.online > 60 * DAY ? " stale" : ""}">${deviceIcon(d.kind)}<span class="meta"><b>${d.label || "A device"}</b>${deviceLine(d)}</span></div>`,
+    ),
+  ];
+  return html`<h2>Devices</h2>${rows}`;
+}
+
 export function renderGroupPage() {
   const g = statusOf(S.group);
   if (!g) {
@@ -52,7 +103,8 @@ export function renderGroupPage() {
   return html`<header class="top sub"><button class="icon-btn" data-act="to-settings" aria-label="Back to Settings">${svg("back", 22)}</button><h1>${g.name}</h1></header>
     <div class="scroll" id="scroll"><div class="settings">
       <div class="group-head">${picture(g.look, 64)}<span class="meta"><b>${g.name}</b>${groupLine(g)}</span></div>
-      <button class="nav-row" data-act="add-device">${svg("qr")}Add a device</button>
+      ${devicesSection(g)}
+      <button class="nav-row" data-act="add-device" style="border-top: 0">${svg("qr")}Add a device</button>
       <h2>Relays</h2>
       ${g.relays.map((r) => html`<div class="srow relay">${svg("relay")}<span class="meta"><b>${r.host}</b>${relayLine(r)}</span></div>`)}
       <h2>Group</h2>
@@ -90,6 +142,7 @@ async function join(key) {
     renderSheet();
     return;
   }
+  await saveMe();
   const g = await groups.add(key);
   closeSheet();
   S.view = "group";
@@ -113,6 +166,7 @@ onActs({
     renderSheet();
   },
   "create-group": async () => {
+    await saveMe();
     const g = await groups.add(S.sheet.key);
     S.view = "group";
     S.group = g.bit;
@@ -122,6 +176,9 @@ onActs({
   },
   "add-device": () => {
     openSheet({ type: "add-device", bit: S.group });
+  },
+  "rename-me": () => {
+    openSheet({ type: "rename-me" });
   },
   "copy-code": async ({ b }) => {
     try {
@@ -179,12 +236,22 @@ onActs({
 });
 
 sheetBodies({
+  "rename-me": () => {
+    const me = groups.me ?? guessMe();
+    return html`<h2 id="sheet-title">This device's name</h2>
+      <p>The other devices in your groups see this device by this name.</p>
+      <form id="me-form" autocomplete="off" style="display: contents">
+      <label class="field">Name<input id="f-me" value="${me.label}" maxlength="60"></label>
+      <button class="primary" type="submit">Save</button></form>
+      <button class="quiet" data-act="close-sheet">Cancel</button>`;
+  },
   "new-group": () => {
     const { look, name } = S.sheet;
     return html`<h2 id="sheet-title">New group</h2>
       <div class="group-pick">${picture(look, 88)}<b id="new-group-name">${name}</b>
         <button type="button" class="icon-btn" data-act="reroll" aria-label="Another name and picture">${svg("dice", 26)}</button></div>
       <p>The devices in a group share all your lists through public Nostr relays, end-to-end encrypted. The name and picture come from the group's key: tap the dice for another, as they can't be changed later.</p>
+      ${meField()}
       <button class="primary" data-act="create-group">Create group</button>
       <button class="quiet" data-act="close-sheet">Cancel</button>`;
   },
@@ -208,6 +275,7 @@ sheetBodies({
       <form id="join-form" autocomplete="off" style="display: contents">
       <label class="field">Code<input id="f-code" class="group-code-input" value="${S.sheet.code || ""}" autocapitalize="characters" autocorrect="off" spellcheck="false"></label>
       <div class="group-preview" id="join-preview"${p ? "" : " hidden"}>${p ? html`${picture(p.look, 36)}<b>${p.name}</b>` : ""}</div>
+      ${meField()}
       ${err}<button class="primary" type="submit">Join</button></form>
       <button class="quiet" data-act="close-sheet">Cancel</button>`;
   },
@@ -241,4 +309,19 @@ document.addEventListener("input", async (e) => {
   box.innerHTML = preview ? html`${picture(preview.look, 36)}<b>${preview.name}</b>`.text : "";
   const err = $(".sheet .err");
   if (err) err.hidden = true;
+});
+
+// What's typed as this device's name stays when the sheet is drawn again (a tap on the dice)
+document.addEventListener("input", (e) => {
+  if (e.target.id === "f-me" && S.sheet) S.sheet = { ...S.sheet, me: e.target.value };
+});
+document.addEventListener("submit", async (e) => {
+  if (e.target.id !== "me-form") return;
+  e.preventDefault();
+  const label = $("#f-me").value.trim();
+  if (!label) return;
+  await groups.setMe({ ...(groups.me ?? guessMe()), label });
+  closeSheet();
+  render();
+  toast("Renamed this device");
 });
