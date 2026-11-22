@@ -34,6 +34,9 @@ const EVERY_MS = 60000;
 const AFTER_CHANGE_MS = 3000;
 // After another device's event arrives live: soon, but letting the same event from the other relays come too
 const AFTER_EVENT_MS = 300;
+// After a failed round, as when the network isn't back yet after the app was in the background: try again this soon,
+// plus up to a second at random, and only show the group as failing once these tries have failed too
+const RETRY_MS = [2000, 8000];
 
 const sameKey = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 
@@ -53,6 +56,7 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
     me: null, // this device, as its status shows it to the others: {label, kind}; null until named
     running: false,
     again: false,
+    retryDelays: RETRY_MS,
     timer: 0,
     device: null,
     listeners: new Set(),
@@ -98,7 +102,10 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
       for (const g of this.groups) this.listen(g);
       addEventListener("online", () => this.soon(0));
       document.addEventListener("visibilitychange", () => {
-        if (!document.hidden) this.soon(0);
+        if (document.hidden) return;
+        // Back from the background: the connections may have died meanwhile without saying so
+        for (const { pool } of live.values()) pool.drop();
+        this.soon(0);
       });
       setInterval(() => {
         if (!document.hidden) this.soon(0);
@@ -203,6 +210,7 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
       this.running = true;
       this.notify();
       let applied = 0;
+      let retry = null;
       try {
         for (const group of [...this.groups]) {
           if (!live.has(group.bit) || group.paused) continue; // removed meanwhile, or paused
@@ -211,13 +219,23 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
             const report = await syncGroup({ app, group, keys, device: this.device, pool, me: this.me ?? {} });
             applied += report.applied;
             group.last = { at: Date.now(), ok: true, error: null, report };
+            group.tries = 0;
           } catch (error) {
+            if ((group.tries ?? 0) < this.retryDelays.length) {
+              // keep the last result showing for now, and try again soon
+              const wait = this.retryDelays[group.tries ?? 0] + Math.random() * 1000;
+              group.tries = (group.tries ?? 0) + 1;
+              retry = retry === null ? wait : Math.min(retry, wait);
+              continue;
+            }
+            group.tries = 0;
             group.last = { at: Date.now(), ok: false, error: error.message || String(error), report: null };
           }
         }
         // The records' bits are saved with the groups' state, in one transaction
         await this.device.persist(this.groups.map((g) => ["put", { ...g }]));
         if (applied) onSynced?.();
+        if (retry !== null) this.soon(retry);
       } finally {
         this.running = false;
         this.notify();
