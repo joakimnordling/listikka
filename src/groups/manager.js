@@ -10,6 +10,7 @@
      relayOptions  for relay.js: {WebSocket, timeout}
      onSynced      called after a round that changed something here */
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
+import { KIND } from "./events.js";
 import { groupKeys } from "./keys.js";
 import { groupName } from "./look.js";
 import { RelayPool } from "./relay.js";
@@ -31,13 +32,15 @@ export const DEFAULT_RELAYS = [
 
 const EVERY_MS = 60000;
 const AFTER_CHANGE_MS = 3000;
+// After another device's event arrives live: soon, but letting the same event from the other relays come too
+const AFTER_EVENT_MS = 300;
 
 const sameKey = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 
 export class GroupFullError extends Error {}
 
 export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, relayOptions, onSynced }) {
-  const live = new Map(); // bit -> {keys, pool}
+  const live = new Map(); // bit -> {keys, pool, stop}: stop ends its live subscription
   async function wire(group) {
     live.get(group.bit)?.pool.close();
     live.set(group.bit, {
@@ -66,7 +69,30 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
     notify() {
       for (const fn of this.listeners) fn();
     },
+    /**
+     * While the app is open, each group that isn't paused listens to its relays: an event from another device starts
+     * a round soon, so changes arrive as they're made, and right after another device joins.
+     */
+    listening: false,
+    listen(group) {
+      const wired = live.get(group.bit);
+      if (!this.listening || !wired || group.paused || wired.stop) return;
+      wired.stop = wired.pool.subscribe(
+        () => ({ kinds: [KIND], authors: [wired.keys.pubkey], since: Math.floor(Date.now() / 1000) - 60 }),
+        (event) => {
+          if (!Object.values(group.heads).includes(event.id)) this.soon(AFTER_EVENT_MS); // not one read or sent already
+        },
+      );
+    },
+    quiet(group) {
+      const wired = live.get(group.bit);
+      wired?.stop?.();
+      if (wired) wired.stop = null;
+    },
+
     start() {
+      this.listening = true;
+      for (const g of this.groups) this.listen(g);
       addEventListener("online", () => this.soon(0));
       document.addEventListener("visibilitychange", () => {
         if (!document.hidden) this.soon(0);
@@ -107,6 +133,7 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
       this.groups.push(group);
       this.groups.sort((a, b) => a.bit - b.bit);
       await wire(group);
+      this.listen(group);
       await this.device.persist([["put", { ...group }]]);
       this.notify();
       this.soon(0);
@@ -117,6 +144,8 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
       const group = this.groups.find((g) => g.bit === bit);
       if (!group) throw new Error(`No group with bit ${bit}.`);
       group.paused = paused;
+      if (paused) this.quiet(group);
+      else this.listen(group);
       await this.device.persist([["put", { ...group }]]);
       this.notify();
       if (!paused) this.soon(0);
@@ -127,6 +156,7 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
      */
     async remove(bit) {
       const group = this.groups.find((g) => g.bit === bit);
+      if (group) this.quiet(group);
       this.groups = this.groups.filter((g) => g.bit !== bit);
       const wired = live.get(bit);
       live.delete(bit);
@@ -137,6 +167,13 @@ export function createGroups({ app, store, makeDevice, relays = DEFAULT_RELAYS, 
       this.device.clearBit(bit);
       await this.device.persist([["delete", `group:${bit}`]]);
       this.notify();
+    },
+
+    /** Close every group's connections (in tests). */
+    close() {
+      this.listening = false;
+      clearTimeout(this.timer);
+      for (const { pool } of live.values()) pool.close();
     },
 
     soon(ms = AFTER_CHANGE_MS) {

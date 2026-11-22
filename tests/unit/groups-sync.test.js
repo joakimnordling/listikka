@@ -175,6 +175,24 @@ describe("a sharing group", () => {
     assert.equal(B.item("Rye bread").q, "2");
   });
 
+  it("while listening, another device's change arrives without asking", async () => {
+    const L = await device(relays);
+    const g = await L.groups.add(key);
+    await run(L.groups);
+    L.groups.listening = true;
+    L.groups.listen(g);
+    try {
+      await new Promise((r) => setTimeout(r, 200)); // subscribed
+      await B.add("Cardamom");
+      await run(B.groups);
+      for (let n = 0; n < 50 && !L.item("Cardamom"); n++) await new Promise((r) => setTimeout(r, 100));
+      assert.ok(L.item("Cardamom"));
+    } finally {
+      L.groups.close();
+    }
+    await rounds([A]);
+  });
+
   it("carries on where it was after the app starts again", async () => {
     const again = await device(relays, A.db);
     assert.equal(again.groups.groups.length, 1);

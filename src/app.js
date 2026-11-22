@@ -38,7 +38,7 @@ store.onChange(() => {
 });
 const redraw = () => {
   if (S.view !== "removed") render();
-  if (S.sheet?.type === "server" || S.sheet?.type === "add-device") renderSheet();
+  if (S.sheet?.type === "server") renderSheet();
 };
 sync.onChange(redraw);
 groups.onChange(redraw);
