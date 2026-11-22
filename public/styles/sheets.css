@@ -25,6 +25,10 @@
   max-height: calc(92% - var(--kb, 0px));
   overflow-y: auto;
 }
+/* A sheet taller than the screen scrolls; its parts keep their size instead of being squeezed into it */
+.sheet > * {
+  flex-shrink: 0;
+}
 .sheet h2 {
   margin: 0;
   font-size: 21px;

@@ -71,6 +71,17 @@ describe("sharing groups", () => {
     await idle(A);
     assert.equal(await A.evaluate(() => window.__drawn), 1, "drawn once, not again as the first sync starts and ends");
     assert.ok(await A.$(".sheet svg.qr path"));
+    // On a short screen too, as an iPhone's with Safari's bars, the QR code is whole: the sheet scrolls instead
+    const size = A.viewportSize();
+    await A.setViewportSize({ width: 393, height: 620 });
+    const [box, qr] = await A.$eval(".qr-box", (b) =>
+      [b.getBoundingClientRect(), b.querySelector("svg").getBoundingClientRect()].map((r) => ({
+        w: r.width,
+        h: r.height,
+      })),
+    );
+    assert.ok(qr.h <= box.h + 0.5 && box.h >= box.w - 0.5, `QR ${qr.w}×${qr.h} in ${box.w}×${box.h}`);
+    await A.setViewportSize(size);
     code = await A.textContent("#group-code");
     assert.match(code, /^([0-9A-Z]{4} ){12}[0-9A-Z]{4}\S$/);
     // Copy code says so on the button
